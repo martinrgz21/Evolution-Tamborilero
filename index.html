@@ -48,7 +48,7 @@ header {
 #signal { display: flex; align-items: center; gap: 7px; font-size: .72rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 #signal-pip { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); transition: background .4s; }
 #signal-pip.on { background: var(--good); }
-#fb-signal { font-size: .72rem; font-weight: 500; color: var(--ink-3); }
+#fb-signal { font-size: .72rem; font-weight: 500; color: var(--ink-3); transition: color .3s; }
 #fb-signal.synced { color: var(--good); }
 
 #conn-btn {
@@ -121,7 +121,7 @@ table.ptable td.c-empty { color: var(--rule); }
 table.ptable td.c-record { color: var(--navy); font-weight: bold; }
 table.ptable td.c-near { color: var(--bronze); }
 table.ptable td.c-cur { background: rgba(43,76,126,.12); color: var(--navy); font-weight: bold; }
-table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estilo para datos basados en SOG */
+table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 
 #panel-history { padding: 24px; }
 .hist-table { width: 100%; border-collapse: collapse; font-family: var(--serif); }
@@ -146,6 +146,8 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
 ::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-thumb { background: var(--rule); }
 </style>
+
+<link rel="icon" href="data:,">
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
@@ -173,7 +175,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
   const TWS_B = [5,8,10,12,14,16,18,20,25,30];
   const TWA_B = [30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180];
 
-  let polar = {}; // Almacenará objetos estructurados: { valor: X, tipo: 'SOG'|'BSP' }
+  let polar = {}; 
   let history = [];
   let ws = null;
 
@@ -191,19 +193,40 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
       document.getElementById('fb-signal').textContent = "Nube: OK";
       document.getElementById('fb-signal').className = "synced";
     } catch(e) {
-      document.getElementById('fb-signal').textContent = "Nube: Error";
+      console.error("Error guardando en Firebase: ", e);
+      document.getElementById('fb-signal').textContent = "Nube: Error guardado";
       document.getElementById('fb-signal').className = "";
     }
   }
 
   async function loadPolarFirebase() {
+    // Generamos un mecanismo de corte para evitar bloqueos por carga infinita
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Timeout de red")), 4000)
+    );
+
     try {
-      const docSnap = await getDoc(doc(db, "polar_data", "current_polar"));
+      document.getElementById('fb-signal').textContent = "Nube: Leyendo...";
+      
+      const docPromise = getDoc(doc(db, "polar_data", "current_polar"));
+      const docSnap = await Promise.race([docPromise, timeout]);
+
       if (docSnap.exists()) {
         polar = docSnap.data();
-        renderPolar();
+        document.getElementById('fb-signal').textContent = "Nube: OK";
+      } else {
+        polar = {}; // Polar inicial vacía lista para escribir récords
+        document.getElementById('fb-signal').textContent = "Nube: OK (Vacía)";
       }
-    } catch(e) { console.error("Error cargando de Firebase: ", e); }
+      document.getElementById('fb-signal').className = "synced";
+      renderPolar();
+    } catch(e) { 
+      console.warn("Modo offline activado automáticamente:", e);
+      polar = {};
+      document.getElementById('fb-signal').textContent = "Nube: Offline (Local)";
+      document.getElementById('fb-signal').className = "synced"; // Permite pintar en verde para operar
+      renderPolar();
+    }
   }
 
   /* ══════════════ CÁLCULO DINÁMICO DE TARGETS (BEAT & RUN) ══════════════ */
@@ -266,7 +289,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
         if (record && record.valor) {
           txt = record.valor.toFixed(1);
           if (record.tipo === 'SOG') {
-            cls = 'c-sog-fade'; // Sombreado gris/itálica para SOG
+            cls = 'c-sog-fade'; 
             txt += '*';
           } else {
             const r = record.valor/gMax;
@@ -288,18 +311,15 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
     
     const k = pKey(S.tws, S.twa);
     const existing = polar[k];
-    const currentSource = CFG.speedSource; // 'SOG' o 'BSP'
+    const currentSource = CFG.speedSource;
 
     let updateNeeded = false;
 
     if (!existing || !existing.valor) {
-      // 1. Si la celda está vacía, se graba cualquier fuente disponible
       updateNeeded = true;
     } else if (existing.tipo === 'SOG' && currentSource === 'BSP') {
-      // 2. REGLA DE ORO: Si el dato viejo es SOG y el nuevo es BSP, se reemplaza SIEMPRE
       updateNeeded = true;
     } else if (existing.tipo === currentSource && speed > existing.valor) {
-      // 3. Si son del mismo tipo, solo se actualiza si supera el récord anterior
       updateNeeded = true;
     }
 
@@ -312,6 +332,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
     }
   }
 
+  /* ════════════════════════ DASHBOARD & LOGIC ════════════════ */
   function calcPerf() {
     const k = pKey(S.tws, S.twa);
     const speed = activeSpeed();
@@ -341,7 +362,6 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
     document.getElementById('v-run-vmg').innerHTML = targets.runVmg ? fmt(targets.runVmg) + '<span class="unit">kn</span>' : '—';
     document.getElementById('v-gybe-angle').textContent = targets.gybeAngle;
 
-    // Mostrar en el dashboard si la referencia guardada es provisional (SOG)
     if (bestBsp) {
       document.getElementById('v-best').textContent = fmt(bestBsp) + ' kn' + (record.tipo === 'SOG' ? ' (SOG*)' : '');
     } else {
@@ -452,7 +472,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; } /* Estil
     CFG.speedSource = this.value;
   });
 
-  /* INIT */
+  /* INICIALIZACIÓN AUTOMÁTICA AL CARGAR */
   loadPolarFirebase();
 </script>
 </head>
