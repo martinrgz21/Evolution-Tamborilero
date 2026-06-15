@@ -44,12 +44,24 @@ header {
 .wordmark { font-family: var(--serif); font-size: 1.1rem; letter-spacing: .02em; color: var(--navy); }
 .wordmark em { font-style: italic; color: var(--ink-2); font-size: .95rem; }
 
-.header-right { display: flex; align-items: center; gap: 20px; }
+.header-right { display: flex; align-items: center; gap: 15px; }
 #signal { display: flex; align-items: center; gap: 7px; font-size: .72rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
 #signal-pip { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); transition: background .4s; }
 #signal-pip.on { background: var(--good); }
 #fb-signal { font-size: .72rem; font-weight: 500; color: var(--ink-3); transition: color .3s; }
 #fb-signal.synced { color: var(--good); }
+
+/* Estilos para el nuevo botón de motor */
+#motor-btn {
+  font-family: var(--sans); font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-2); background: transparent; border: 1px solid var(--rule); padding: 5px 12px; border-radius: 3px; cursor: pointer;
+  transition: all .2s; display: flex; align-items: center; gap: 6px;
+}
+#motor-btn.active {
+  color: #fff; background: var(--danger); border-color: var(--danger);
+  animation: blinker 1.5s linear infinite;
+}
+@keyframes blinker { 50% { opacity: 0.7; } }
 
 #conn-btn {
   font-family: var(--sans); font-size: .72rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
@@ -135,6 +147,8 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 .cfg-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rule); }
 .cfg-row:last-child { border-bottom: none; }
 .cfg-row input, .cfg-row select { background: var(--bg); border: 1px solid var(--rule); padding: 5px 10px; border-radius: 3px; }
+.danger-btn { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 6px 14px; border-radius: 3px; cursor: pointer; font-weight: 500; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+.danger-btn:hover { background: var(--danger); color: #fff; }
 
 #overlay { position: fixed; inset: 0; background: rgba(26,26,26,.45); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 200; }
 #modal { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 32px; width: min(88vw, 380px); }
@@ -170,7 +184,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
   const S = {
     bsp:0, tws:0, twa:0, awa:0, aws:0, cog:0, sog:0, live:false
   };
-  const CFG = { thresh:85, minSpeed:2.0, speedSource: 'BSP' };
+  const CFG = { thresh:85, minSpeed:2.0, speedSource: 'BSP', motorMode: false };
 
   const TWS_B = [5,8,10,12,14,16,18,20,25,30];
   const TWA_B = [30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180];
@@ -190,7 +204,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
   async function savePolarFirebase() {
     try {
       await setDoc(doc(db, "polar_data", "current_polar"), polar);
-      document.getElementById('fb-signal').textContent = "Nube: OK";
+      document.getElementById('fb-signal').textContent = CFG.motorMode ? "Nube: Pausado (Motor)" : "Nube: OK";
       document.getElementById('fb-signal').className = "synced";
     } catch(e) {
       console.error("Error guardando en Firebase: ", e);
@@ -200,7 +214,6 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
   }
 
   async function loadPolarFirebase() {
-    // Generamos un mecanismo de corte para evitar bloqueos por carga infinita
     const timeout = new Promise((_, reject) => 
       setTimeout(() => reject(new Error("Timeout de red")), 4000)
     );
@@ -215,7 +228,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
         polar = docSnap.data();
         document.getElementById('fb-signal').textContent = "Nube: OK";
       } else {
-        polar = {}; // Polar inicial vacía lista para escribir récords
+        polar = {}; 
         document.getElementById('fb-signal').textContent = "Nube: OK (Vacía)";
       }
       document.getElementById('fb-signal').className = "synced";
@@ -224,7 +237,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
       console.warn("Modo offline activado automáticamente:", e);
       polar = {};
       document.getElementById('fb-signal').textContent = "Nube: Offline (Local)";
-      document.getElementById('fb-signal').className = "synced"; // Permite pintar en verde para operar
+      document.getElementById('fb-signal').className = "synced";
       renderPolar();
     }
   }
@@ -306,6 +319,9 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 
   /* ════════════════════════ PROCESADO DATA ════════════════ */
   function updatePolar() {
+    // REGLA NUEVA: Si el modo motor está activo, salimos inmediatamente sin registrar nada
+    if (CFG.motorMode) return;
+
     const speed = activeSpeed();
     if (speed < CFG.minSpeed) return;
     
@@ -368,14 +384,22 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
       document.getElementById('v-best').textContent = '—';
     }
     
-    document.getElementById('v-cell').textContent = S.live ? `TWS ${nearest(TWS_B,S.tws)} / TWA ${nearest(TWA_B,S.twa)}°` : '—';
+    // Si estamos a motor, modificamos la etiqueta de la celda actual para avisar visualmente
+    if (CFG.motorMode) {
+      document.getElementById('v-cell').innerHTML = `<span style="color:var(--danger); font-weight:bold;">¡PAUSADO POR MOTOR!</span>`;
+    } else {
+      document.getElementById('v-cell').textContent = S.live ? `TWS ${nearest(TWS_B,S.tws)} / TWA ${nearest(TWA_B,S.twa)}°` : '—';
+    }
 
     const pEl = document.getElementById('v-perf');
     const pFill = document.getElementById('perf-fill');
     const pCap = document.getElementById('perf-cap');
     const adv = document.getElementById('v-advice');
 
-    if (perf !== null) {
+    if (CFG.motorMode) {
+      pEl.textContent = '—'; pFill.style.width = '0%'; pCap.textContent = 'Modo Motor: Captura suspendida temporalmente.';
+      adv.textContent = 'A Motor'; adv.className = 'advice-text st-bad';
+    } else if (perf !== null) {
       pEl.textContent = fmt(perf,0) + '%';
       pFill.style.width = perf + '%';
       let state = perf >= CFG.thresh ? 'good' : perf >= 70 ? 'mid' : 'bad';
@@ -395,6 +419,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 
   let histTick = 0;
   function recordHistory() {
+    if (CFG.motorMode) return; // Tampoco ensuciamos el historial si vamos a motor
     const speed = activeSpeed();
     const perf = calcPerf();
     const now = new Date();
@@ -456,6 +481,21 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
     });
   });
 
+  // Evento para activar/desactivar el modo motor de un toque
+  document.getElementById('motor-btn').addEventListener('click', function() {
+    CFG.motorMode = !CFG.motorMode;
+    if (CFG.motorMode) {
+      this.classList.add('active');
+      this.innerHTML = "<span>⚠️ MOTO-ON</span>";
+      document.getElementById('fb-signal').textContent = "Nube: Pausado (Motor)";
+    } else {
+      this.classList.remove('active');
+      this.innerHTML = "<span>⚙️ Motor</span>";
+      document.getElementById('fb-signal').textContent = "Nube: OK";
+    }
+    updateDash();
+  });
+
   document.getElementById('conn-btn').addEventListener('click', () => { document.getElementById('overlay').style.display='flex'; });
   document.getElementById('m-conn').addEventListener('click', () => {
     const h = document.getElementById('m-host').value.trim()||'192.168.0.1';
@@ -472,6 +512,22 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
     CFG.speedSource = this.value;
   });
 
+  // Nueva función para borrar selectivamente la celda corrupta actual
+  document.getElementById('clear-cell-btn').addEventListener('click', () => {
+    const k = pKey(S.tws, S.twa);
+    if (!polar[k] || !polar[k].valor) {
+      alert("La celda correspondiente a las condiciones actuales ya está vacía.");
+      return;
+    }
+    if (confirm(`¿Quieres borrar el registro de la celda actual (${nearest(TWS_B, S.tws)} kn / ${nearest(TWA_B, S.twa)}°)?`)) {
+      delete polar[k];
+      savePolarFirebase();
+      renderPolar();
+      updateDash();
+      alert("Celda eliminada.");
+    }
+  });
+
   /* INICIALIZACIÓN AUTOMÁTICA AL CARGAR */
   loadPolarFirebase();
 </script>
@@ -482,6 +538,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
   <header>
     <div class="wordmark">Evolution Tamborilero <em>/ v2.1 </em></div>
     <div class="header-right">
+      <button id="motor-btn"><span>⚙️ Motor</span></button>
       <div id="fb-signal">Nube: Conectando...</div>
       <div id="signal">
         <div id="signal-pip"></div>
@@ -621,6 +678,17 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
           <label>Umbral de Rendimiento óptimo</label>
           <input type="range" id="cfg-thresh" min="50" max="99" value="85">
           <span id="thresh-v">85%</span>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-title" style="color:var(--danger)">Control de Errores y Depuración de Datos</div>
+        <div class="cfg-row">
+          <div>
+            <p><strong>Limpiar Celda Actual</strong></p>
+            <p style="font-size:0.75rem; color:var(--ink-2)">Si se grabó un dato falso a motor por descuido, limpia la celda actual según el viento de este momento.</p>
+          </div>
+          <button class="danger-btn" id="clear-cell-btn">Borrar Celda Actual</button>
         </div>
       </div>
     </div>
