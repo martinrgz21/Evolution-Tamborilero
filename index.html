@@ -51,7 +51,7 @@ header {
 #fb-signal { font-size: .72rem; font-weight: 500; color: var(--ink-3); transition: color .3s; }
 #fb-signal.synced { color: var(--good); }
 
-/* Estilos para el nuevo botón de motor */
+/* Estilos para el botón de modo motor */
 #motor-btn {
   font-family: var(--sans); font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ink-2); background: transparent; border: 1px solid var(--rule); padding: 5px 12px; border-radius: 3px; cursor: pointer;
@@ -319,7 +319,6 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 
   /* ════════════════════════ PROCESADO DATA ════════════════ */
   function updatePolar() {
-    // REGLA NUEVA: Si el modo motor está activo, salimos inmediatamente sin registrar nada
     if (CFG.motorMode) return;
 
     const speed = activeSpeed();
@@ -384,7 +383,6 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
       document.getElementById('v-best').textContent = '—';
     }
     
-    // Si estamos a motor, modificamos la etiqueta de la celda actual para avisar visualmente
     if (CFG.motorMode) {
       document.getElementById('v-cell').innerHTML = `<span style="color:var(--danger); font-weight:bold;">¡PAUSADO POR MOTOR!</span>`;
     } else {
@@ -419,7 +417,7 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 
   let histTick = 0;
   function recordHistory() {
-    if (CFG.motorMode) return; // Tampoco ensuciamos el historial si vamos a motor
+    if (CFG.motorMode) return; 
     const speed = activeSpeed();
     const perf = calcPerf();
     const now = new Date();
@@ -444,18 +442,30 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
     if (++histTick % 12 === 0) recordHistory();
   }
 
-  /* ════════════════════════ NMEA PARSER ════════════════════════ */
+  /* ════════════════ NMEA PARSER (OPTIMIZADO PARA B&G VULCAN) ════════════════ */
   function parseNMEA(line) {
-    line = line.trim(); if (!line.startsWith('$')) return;
-    const p = line.split(','); const t = p[0].slice(1);
-    if (t.endsWith('VHW')) { const v=parseFloat(p[5]); if(!isNaN(v)) S.bsp=v; }
+    line = line.trim(); 
+    if (!line.startsWith('$')) return;
+    
+    const p = line.split(','); 
+    const t = p[0]; 
+    
+    if (t.endsWith('VHW')) { 
+      const v = parseFloat(p[5]); 
+      if (!isNaN(v)) S.bsp = v; 
+    }
     else if (t.endsWith('MWV')) {
-      const a=parseFloat(p[1]),r=p[2],sp=parseFloat(p[3]);
-      if(r==='R'&&!isNaN(a)&&!isNaN(sp)){S.awa=a;S.aws=sp;}
-      if(r==='T'&&!isNaN(a)&&!isNaN(sp)){S.twa=a;S.tws=sp;}
+      const a = parseFloat(p[1]);
+      const r = p[2];
+      const sp = parseFloat(p[3]);
+      if (r === 'R' && !isNaN(a) && !isNaN(sp)) { S.awa = a; S.aws = sp; }
+      if (r === 'T' && !isNaN(a) && !isNaN(sp)) { S.twa = a; S.tws = sp; }
     }
     else if (t.endsWith('VTG') || t.endsWith('RMC')) {
-      const sg=parseFloat(p[7]),cg=parseFloat(p[8]); if(!isNaN(sg))S.sog=sg; if(!isNaN(cg))S.cog=cg;
+      const sg = parseFloat(p[7]);
+      const cg = parseFloat(p[8]); 
+      if (!isNaN(sg)) S.sog = sg; 
+      if (!isNaN(cg)) S.cog = cg;
     }
   }
 
@@ -481,7 +491,6 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
     });
   });
 
-  // Evento para activar/desactivar el modo motor de un toque
   document.getElementById('motor-btn').addEventListener('click', function() {
     CFG.motorMode = !CFG.motorMode;
     if (CFG.motorMode) {
@@ -512,7 +521,6 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
     CFG.speedSource = this.value;
   });
 
-  // Nueva función para borrar selectivamente la celda corrupta actual
   document.getElementById('clear-cell-btn').addEventListener('click', () => {
     const k = pKey(S.tws, S.twa);
     if (!polar[k] || !polar[k].valor) {
