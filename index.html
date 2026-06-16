@@ -25,12 +25,8 @@
 }
 
 html, body {
-  height: 100dvh;
-  overflow: hidden;
-  background: var(--bg);
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: 14px;
+  height: 100dvh; overflow: hidden; background: var(--bg);
+  color: var(--ink); font-family: var(--sans); font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -43,19 +39,24 @@ header {
 }
 .wordmark { font-family: var(--serif); font-size: 1.1rem; letter-spacing: .02em; color: var(--navy); }
 .wordmark em { font-style: italic; color: var(--ink-2); font-size: .95rem; }
-
 .header-right { display: flex; align-items: center; gap: 15px; }
-#signal { display: flex; align-items: center; gap: 7px; font-size: .72rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+
+#signal {
+  display: flex; align-items: center; gap: 7px; font-size: .72rem;
+  font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
+}
 #signal-pip { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); transition: background .4s; }
 #signal-pip.on { background: var(--good); }
+
 #fb-signal { font-size: .72rem; font-weight: 500; color: var(--ink-3); transition: color .3s; }
 #fb-signal.synced { color: var(--good); }
+#fb-signal.error  { color: var(--danger); }
 
-/* Estilos para el botón de modo motor */
 #motor-btn {
-  font-family: var(--sans); font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--ink-2); background: transparent; border: 1px solid var(--rule); padding: 5px 12px; border-radius: 3px; cursor: pointer;
-  transition: all .2s; display: flex; align-items: center; gap: 6px;
+  font-family: var(--sans); font-size: .72rem; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
+  background: transparent; border: 1px solid var(--rule); padding: 5px 12px;
+  border-radius: 3px; cursor: pointer; transition: all .2s;
 }
 #motor-btn.active {
   color: #fff; background: var(--danger); border-color: var(--danger);
@@ -64,14 +65,19 @@ header {
 @keyframes blinker { 50% { opacity: 0.7; } }
 
 #conn-btn {
-  font-family: var(--sans); font-size: .72rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--navy); background: transparent; border: 1px solid var(--navy); padding: 5px 14px; border-radius: 3px; cursor: pointer;
+  font-family: var(--sans); font-size: .72rem; font-weight: 500;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--navy);
+  background: transparent; border: 1px solid var(--navy); padding: 5px 14px;
+  border-radius: 3px; cursor: pointer; transition: background .15s;
 }
+#conn-btn:hover { background: rgba(43,76,126,.07); }
 
 nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--rule); flex-shrink: 0; }
 .tab {
-  padding: 13px 22px; font-size: .72rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase;
-  color: var(--ink-3); cursor: pointer; border-bottom: 2px solid transparent; user-select: none;
+  padding: 13px 22px; font-size: .72rem; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+  cursor: pointer; border-bottom: 2px solid transparent; user-select: none;
+  transition: color .2s, border-color .2s;
 }
 .tab.active { color: var(--navy); border-bottom-color: var(--navy); }
 
@@ -79,83 +85,148 @@ nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--
 .panel { position: absolute; inset: 0; overflow-y: auto; display: none; }
 .panel.active { display: block; }
 
+/* ── DASHBOARD ── */
 #panel-dash { padding: 0; display: none; flex-direction: column; }
 #panel-dash.active { display: flex; }
 
 .row-top { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--rule); }
 .hero-cell { padding: 24px 32px; border-right: 1px solid var(--rule); }
 .hero-cell:last-child { border-right: none; }
-.cell-label { font-size: .65rem; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; display: block; }
+.cell-label {
+  font-size: .65rem; font-weight: 500; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; display: block;
+}
 .value-xl { font-family: var(--serif); font-size: 4rem; line-height: 1; color: var(--ink); }
 .value-xl .unit { font-family: var(--sans); font-size: .8rem; font-weight: 300; color: var(--ink-2); margin-left: 6px; }
 
-.perf-number { font-family: var(--serif); font-size: 4rem; line-height: 1; color: var(--ink); }
+.perf-number { font-family: var(--serif); font-size: 4rem; line-height: 1; color: var(--ink); transition: color .4s; }
 .perf-number.st-good { color: var(--good); }
 .perf-number.st-mid  { color: var(--bronze); }
 .perf-number.st-bad  { color: var(--danger); }
-.perf-bar-track { height: 2px; background: var(--rule); margin-top: 10px; overflow: hidden; }
-.perf-bar-fill { height: 100%; width: 0%; background: var(--navy); transition: width .4s; }
+.perf-bar-track { height: 2px; background: var(--rule); margin-top: 10px; overflow: hidden; border-radius: 1px; }
+.perf-bar-fill { height: 100%; width: 0%; background: var(--navy); transition: width .5s ease, background .4s; border-radius: 1px; }
 .perf-bar-fill.st-good { background: var(--good); }
 .perf-bar-fill.st-mid  { background: var(--bronze); }
 .perf-bar-fill.st-bad  { background: var(--danger); }
 .perf-caption { margin-top: 5px; font-size: .72rem; color: var(--ink-2); }
 
-.row-mid, .row-bot, .row-targets { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
-.row-targets { background: rgba(43,76,126,.03); }
+.row-targets { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); background: rgba(43,76,126,.03); }
+.row-mid, .row-bot { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
 .instr-cell { padding: 16px 24px; border-right: 1px solid var(--rule); }
 .instr-cell:last-child { border-right: none; }
 .value-lg { font-family: var(--serif); font-size: 2.4rem; line-height: 1; color: var(--ink); }
 .value-lg .unit { font-family: var(--sans); font-size: .72rem; color: var(--ink-3); margin-left: 4px; }
 
-.vmg-banner { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 18px 32px; background: var(--surface); }
+.vmg-banner {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  padding: 18px 32px; background: var(--surface);
+}
 .vmg-banner-cell { padding: 0 20px; border-right: 1px solid var(--rule); }
 .vmg-banner-cell:first-child { padding-left: 0; }
 .vmg-banner-cell:last-child { border-right: none; }
 .value-md { font-family: var(--serif); font-size: 1.8rem; line-height: 1; color: var(--ink); }
-.advice-text { font-family: var(--serif); font-size: 1.4rem; font-style: italic; color: var(--ink-2); }
+.advice-text { font-family: var(--serif); font-size: 1.4rem; font-style: italic; color: var(--ink-2); transition: color .4s; }
 .advice-text.st-good { color: var(--good); }
 .advice-text.st-mid  { color: var(--bronze); }
 .advice-text.st-bad  { color: var(--danger); }
 
+/* ── POLAR ── */
 #panel-polar { padding: 24px; }
 .polar-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
 .polar-title { font-family: var(--serif); font-size: 1.2rem; color: var(--ink); }
 .polar-subtitle { font-size: .7rem; color: var(--ink-2); margin-left: 10px; }
-
-.polar-legend { display: flex; gap: 20px; margin-bottom: 14px; font-size: .75rem; color: var(--ink-2); }
-.leg-sog { font-style: italic; color: var(--ink-3); }
+.polar-legend { margin-bottom: 14px; font-size: .75rem; color: var(--ink-2); line-height: 1.6; }
+.polar-legend .leg-sog { font-style: italic; color: var(--ink-3); }
 
 .polar-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; }
 table.ptable { border-collapse: collapse; font-family: var(--serif); font-size: .92rem; width: 100%; min-width: 560px; }
 table.ptable th, table.ptable td { padding: 7px 12px; text-align: center; border: 1px solid var(--rule); }
-table.ptable thead th { background: var(--surface); font-family: var(--sans); font-size: .65rem; color: var(--ink-3); }
-table.ptable td.c-empty { color: var(--rule); }
-table.ptable td.c-record { color: var(--navy); font-weight: bold; }
-table.ptable td.c-near { color: var(--bronze); }
-table.ptable td.c-cur { background: rgba(43,76,126,.12); color: var(--navy); font-weight: bold; }
-table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
+table.ptable thead th {
+  background: var(--surface); font-family: var(--sans); font-size: .65rem;
+  font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+}
+table.ptable thead th.th-tws { color: var(--navy); }
+table.ptable tbody th {
+  background: var(--surface); font-family: var(--sans); font-size: .68rem;
+  font-weight: 500; color: var(--ink-3);
+}
+table.ptable td { background: var(--bg); }
+table.ptable td.c-empty   { color: var(--rule); font-size: .75rem; }
+table.ptable td.c-record  { color: var(--navy); font-weight: bold; }
+table.ptable td.c-near    { color: var(--bronze); }
+table.ptable td.c-cur     { background: rgba(43,76,126,.1); color: var(--navy); font-weight: bold; outline: 1px solid rgba(43,76,126,.3); outline-offset: -1px; }
+table.ptable td.c-sog     { color: var(--ink-3); font-style: italic; }
 
+/* ── HISTORY ── */
 #panel-history { padding: 24px; }
-.hist-table { width: 100%; border-collapse: collapse; font-family: var(--serif); }
-.hist-table thead th { font-family: var(--sans); font-size: .65rem; color: var(--ink-3); text-align: left; padding: 0 16px 10px; border-bottom: 1px solid var(--rule); }
+.hist-filters {
+  display: flex; gap: 12px; margin-bottom: 16px; align-items: center;
+  flex-wrap: wrap;
+}
+.hist-filters select, .hist-filters input {
+  background: var(--surface); border: 1px solid var(--rule); padding: 6px 10px;
+  border-radius: 3px; font-family: var(--sans); font-size: .78rem; color: var(--ink);
+}
+.hist-filters label { font-size: .72rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: .08em; }
+.hist-table { width: 100%; border-collapse: collapse; font-family: var(--serif); font-size: .9rem; }
+.hist-table thead th {
+  font-family: var(--sans); font-size: .65rem; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-3); text-align: left;
+  padding: 0 16px 10px; border-bottom: 1px solid var(--rule);
+}
 .hist-table tbody tr { border-bottom: 1px solid var(--rule); }
+.hist-table tbody tr:hover { background: rgba(43,76,126,.03); }
 .hist-table tbody td { padding: 9px 16px; color: var(--ink); }
+.hist-table tbody td.ts { font-family: var(--sans); font-size: .72rem; color: var(--ink-3); }
+.hist-table tbody td.src { font-family: var(--sans); font-size: .68rem; font-style: italic; color: var(--ink-3); }
+.c-ph-good { color: var(--good); }
+.c-ph-mid  { color: var(--bronze); }
+.c-ph-bad  { color: var(--danger); }
 
+/* ── SETTINGS ── */
 #panel-settings { padding: 24px; }
 .cfg-section { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 20px 24px; margin-bottom: 16px; }
-.cfg-title { font-size: .65rem; font-weight: 500; text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px; }
-.cfg-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.cfg-title { font-size: .65rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px; }
+.cfg-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--rule); gap: 16px; }
 .cfg-row:last-child { border-bottom: none; }
-.cfg-row input, .cfg-row select { background: var(--bg); border: 1px solid var(--rule); padding: 5px 10px; border-radius: 3px; }
-.danger-btn { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 6px 14px; border-radius: 3px; cursor: pointer; font-weight: 500; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
+.cfg-row label { font-size: .85rem; color: var(--ink); line-height: 1.4; }
+.cfg-row small { display: block; font-size: .72rem; color: var(--ink-3); margin-top: 2px; }
+.cfg-row input[type=range] { width: 110px; accent-color: var(--navy); }
+.cfg-row select, .cfg-row input[type=number] {
+  background: var(--bg); border: 1px solid var(--rule); color: var(--ink);
+  padding: 6px 10px; border-radius: 3px; font-size: .85rem; min-width: 80px;
+}
+.cfg-val { font-family: var(--serif); font-size: .95rem; color: var(--navy); min-width: 36px; text-align: right; }
+.danger-btn {
+  background: transparent; border: 1px solid var(--danger); color: var(--danger);
+  padding: 6px 14px; border-radius: 3px; cursor: pointer; font-size: .7rem;
+  font-weight: 500; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
 .danger-btn:hover { background: var(--danger); color: #fff; }
+.cfg-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.stat-box { background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 16px; text-align: center; }
+.stat-box .stat-val { font-family: var(--serif); font-size: 1.8rem; color: var(--navy); }
+.stat-box .stat-lbl { font-size: .65rem; font-weight: 500; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin-top: 2px; }
 
-#overlay { position: fixed; inset: 0; background: rgba(26,26,26,.45); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 200; }
-#modal { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 32px; width: min(88vw, 380px); }
+/* ── MODAL ── */
+#overlay {
+  position: fixed; inset: 0; background: rgba(26,26,26,.45);
+  backdrop-filter: blur(2px); display: flex; align-items: center;
+  justify-content: center; z-index: 200;
+}
+#modal { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 32px; width: min(88vw, 380px); box-shadow: 0 8px 40px rgba(0,0,0,.1); }
 #modal h2 { font-family: var(--serif); font-size: 1.4rem; color: var(--navy); margin-bottom: 8px; }
-.m-input { width: 100%; background: var(--bg); border: 1px solid var(--rule); padding: 9px 12px; margin-bottom: 14px; }
-.m-btn { width: 100%; padding: 11px; border: none; font-weight: 500; cursor: pointer; text-transform: uppercase; }
+#modal p { font-size: .8rem; color: var(--ink-2); line-height: 1.6; margin-bottom: 20px; }
+.m-label { font-size: .65rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 5px; }
+.m-input {
+  width: 100%; background: var(--bg); border: 1px solid var(--rule); color: var(--ink);
+  padding: 9px 12px; border-radius: 3px; font-size: .9rem; margin-bottom: 14px;
+}
+.m-btn { width: 100%; padding: 11px; border: none; font-family: var(--sans); font-size: .75rem; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; border-radius: 3px; margin-bottom: 8px; transition: opacity .15s; }
+.m-btn:hover { opacity: .85; }
 .m-btn.primary { background: var(--navy); color: #fff; }
+.m-btn.ghost   { background: transparent; border: 1px solid var(--rule); color: var(--ink-2); }
 
 ::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-thumb { background: var(--rule); }
@@ -164,390 +235,479 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 <link rel="icon" href="data:,">
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCH9QilfBI6lorKexzFASfF_wHqtrVLPHU",
-    authDomain: "evolution-tamborilero.firebaseapp.com",
-    projectId: "evolution-tamborilero",
-    storageBucket: "evolution-tamborilero.firebasestorage.app",
-    messagingSenderId: "647006792385",
-    appId: "1:647006792385:web:9cf86bb9eca722b4dbc240",
-    measurementId: "G-RDTSL1SNV1"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCH9QilfBI6lorKexzFASfF_wHqtrVLPHU",
+  authDomain: "evolution-tamborilero.firebaseapp.com",
+  projectId: "evolution-tamborilero",
+  storageBucket: "evolution-tamborilero.firebasestorage.app",
+  messagingSenderId: "647006792385",
+  appId: "1:647006792385:web:9cf86bb9eca722b4dbc240"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
 
-  /* ════════════════════════ ESTADO GLOBAL ════════════════════════ */
-  const S = {
-    bsp:0, tws:0, twa:0, awa:0, aws:0, cog:0, sog:0, live:false
-  };
-  const CFG = { thresh:85, minSpeed:2.0, speedSource: 'BSP', motorMode: false };
+/* ════════════════════════ ESTADO ════════════════════════ */
+const S = { bsp:0, tws:0, twa:0, awa:0, aws:0, cog:0, sog:0, live:false };
+const CFG = { thresh:85, minSpeed:2.0, speedSource:'SOG', motorMode:false };
 
-  const TWS_B = [5,8,10,12,14,16,18,20,25,30];
-  const TWA_B = [30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180];
+const TWS_B = [5,8,10,12,14,16,18,20,25,30];
+const TWA_B = [30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180];
 
-  let polar = {}; 
-  let history = [];
-  let ws = null;
+let polar   = {};
+let history = [];   // cargado desde Firebase al inicio
+let ws      = null;
 
-  /* ════════════════════════ AUXILIARES / MATEMÁTICAS ════════════════════════ */
-  const nearest = (arr, v) => arr.reduce((a,b) => Math.abs(b-v)<Math.abs(a-v)?b:a);
-  const pKey = (tws,twa) => `${nearest(TWS_B,tws)}_${nearest(TWA_B,twa)}`;
-  const vmg = (speed,twa) => speed * Math.cos(twa * Math.PI/180);
-  const fmt = (v,d=1) => (typeof v==='number'&&!isNaN(v)) ? v.toFixed(d) : '—';
-  const activeSpeed = () => CFG.speedSource === 'BSP' ? S.bsp : S.sog;
+/* ════════════════════════ UTILS ════════════════════════ */
+const nearest    = (arr,v) => arr.reduce((a,b) => Math.abs(b-v)<Math.abs(a-v)?b:a);
+const pKey       = (tws,twa) => `${nearest(TWS_B,tws)}_${nearest(TWA_B,twa)}`;
+const vmg        = (speed,twa) => speed * Math.cos(twa * Math.PI/180);
+const fmt        = (v,d=1) => (typeof v==='number'&&!isNaN(v)) ? v.toFixed(d) : '—';
+const activeSpeed = () => CFG.speedSource === 'BSP' ? S.bsp : S.sog;
 
-  /* ════════════════ CONEXIÓN REAL-TIME (FIREBASE) ════════════════ */
-  async function savePolarFirebase() {
-    try {
-      await setDoc(doc(db, "polar_data", "current_polar"), polar);
-      document.getElementById('fb-signal').textContent = CFG.motorMode ? "Nube: Pausado (Motor)" : "Nube: OK";
-      document.getElementById('fb-signal').className = "synced";
-    } catch(e) {
-      console.error("Error guardando en Firebase: ", e);
-      document.getElementById('fb-signal').textContent = "Nube: Error guardado";
-      document.getElementById('fb-signal').className = "";
-    }
+function setFbStatus(text, cls='') {
+  const el = document.getElementById('fb-signal');
+  el.textContent = text;
+  el.className = cls;
+}
+
+/* ════════════════════════ FIREBASE — POLAR ════════════════════════ */
+
+// Debounce: espera 2.5s de silencio antes de escribir en Firestore
+let _polarSaveTimer = null;
+function schedulePolarSave() {
+  clearTimeout(_polarSaveTimer);
+  _polarSaveTimer = setTimeout(flushPolarSave, 2500);
+}
+async function flushPolarSave() {
+  try {
+    await setDoc(doc(db, "polar_data", "current_polar"), polar);
+    setFbStatus("Nube: Guardado ✓", "synced");
+  } catch(e) {
+    console.error("Error guardando polar:", e);
+    setFbStatus("Nube: Error al guardar", "error");
   }
+}
 
-  async function loadPolarFirebase() {
-    const timeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Timeout de red")), 4000)
+async function loadPolarFirebase() {
+  setFbStatus("Nube: Leyendo...");
+  const timeout = new Promise((_,reject) => setTimeout(() => reject(new Error("timeout")), 5000));
+  try {
+    const snap = await Promise.race([
+      getDoc(doc(db, "polar_data", "current_polar")),
+      timeout
+    ]);
+    polar = snap.exists() ? snap.data() : {};
+    setFbStatus("Nube: OK", "synced");
+  } catch(e) {
+    console.warn("Firebase offline, modo local:", e);
+    polar = {};
+    setFbStatus("Nube: Offline (local)", "synced");
+  }
+  renderPolar();
+  updateStats();
+}
+
+/* ════════════════════════ FIREBASE — HISTORIAL ════════════════════════ */
+
+// Guarda una entrada de historial en su propia colección
+async function saveHistoryEntry(entry) {
+  try {
+    await addDoc(collection(db, "historial"), entry);
+  } catch(e) {
+    console.warn("No se pudo guardar entrada de historial:", e);
+  }
+}
+
+// Carga las últimas 500 entradas ordenadas por timestamp
+async function loadHistoryFirebase() {
+  try {
+    const q = query(
+      collection(db, "historial"),
+      orderBy("timestamp", "desc"),
+      limit(500)
     );
-
-    try {
-      document.getElementById('fb-signal').textContent = "Nube: Leyendo...";
-      
-      const docPromise = getDoc(doc(db, "polar_data", "current_polar"));
-      const docSnap = await Promise.race([docPromise, timeout]);
-
-      if (docSnap.exists()) {
-        polar = docSnap.data();
-        document.getElementById('fb-signal').textContent = "Nube: OK";
-      } else {
-        polar = {}; 
-        document.getElementById('fb-signal').textContent = "Nube: OK (Vacía)";
-      }
-      document.getElementById('fb-signal').className = "synced";
-      renderPolar();
-    } catch(e) { 
-      console.warn("Modo offline activado automáticamente:", e);
-      polar = {};
-      document.getElementById('fb-signal').textContent = "Nube: Offline (Local)";
-      document.getElementById('fb-signal').className = "synced";
-      renderPolar();
-    }
+    const snap = await getDocs(q);
+    history = snap.docs.map(d => d.data());
+    renderHistory();
+  } catch(e) {
+    console.warn("No se pudo cargar historial:", e);
+    history = [];
   }
+}
 
-  /* ══════════════ CÁLCULO DINÁMICO DE TARGETS (BEAT & RUN) ══════════════ */
-  function getVmgTargets() {
-    let targetBeatVmg = 0; let beatAngle = "—";
-    let targetRunVmg = 0;  let gybeAngle = "—";
-    const currentTws = nearest(TWS_B, S.tws);
+/* ════════════════════════ VMG TARGETS ════════════════════════ */
+function getVmgTargets() {
+  let beatVmg = 0, beatAngle = null;
+  let runVmg  = 0, gybeAngle = null;
 
-    for (const twa of TWA_B) {
-      const k = `${currentTws}_${twa}`;
-      const record = polar[k];
-      if (!record || !record.valor) continue;
+  const currentTwsBucket = nearest(TWS_B, S.tws);
 
-      const speed = record.valor;
-      const currentVmg = vmg(speed, twa);
-
-      if (twa <= 90) {
-        if (currentVmg > targetBeatVmg) {
-          targetBeatVmg = currentVmg;
-          beatAngle = twa + "°";
-        }
-      } else {
-        if (currentVmg < targetRunVmg) {
-          targetRunVmg = currentVmg;
-          gybeAngle = twa + "°";
-        }
-      }
-    }
-
-    return {
-      beatVmg: targetBeatVmg > 0 ? targetBeatVmg : null,
-      beatAngle: beatAngle,
-      runVmg: targetRunVmg < 0 ? Math.abs(targetRunVmg) : null,
-      gybeAngle: gybeAngle
-    };
-  }
-
-  /* ════════════════════════ RENDER POLAR ════════════════ */
-  function renderPolar() {
-    const curKey = pKey(S.tws, S.twa);
-    let gMax = 0;
-    
-    for (const k in polar) {
-      if (polar[k] && polar[k].valor > gMax) gMax = polar[k].valor;
-    }
-
-    let h = '<thead><tr><th>TWA / TWS</th>';
-    for (const tw of TWS_B) h += `<th>${tw} kn</th>`;
-    h += '</tr></thead><tbody>';
-
-    for (const twa of TWA_B) {
-      h += `<tr><th>${twa}°</th>`;
-      for (const tws of TWS_B) {
-        const k = `${tws}_${twa}`;
-        const isCur = (k===curKey && S.live);
-        const record = polar[k];
-        
-        let cls='c-empty', txt='·';
-        
-        if (record && record.valor) {
-          txt = record.valor.toFixed(1);
-          if (record.tipo === 'SOG') {
-            cls = 'c-sog-fade'; 
-            txt += '*';
-          } else {
-            const r = record.valor/gMax;
-            cls = r>=0.99 ? 'c-record' : r>=0.90 ? 'c-near' : '';
-          }
-        }
-        if (isCur) cls='c-cur';
-        h += `<td class="${cls}">${txt}</td>`;
-      }
-      h += '</tr>';
-    }
-    document.getElementById('ptable').innerHTML = h+'</tbody>';
-  }
-
-  /* ════════════════════════ PROCESADO DATA ════════════════ */
-  function updatePolar() {
-    if (CFG.motorMode) return;
-
-    const speed = activeSpeed();
-    if (speed < CFG.minSpeed) return;
-    
-    const k = pKey(S.tws, S.twa);
-    const existing = polar[k];
-    const currentSource = CFG.speedSource;
-
-    let updateNeeded = false;
-
-    if (!existing || !existing.valor) {
-      updateNeeded = true;
-    } else if (existing.tipo === 'SOG' && currentSource === 'BSP') {
-      updateNeeded = true;
-    } else if (existing.tipo === currentSource && speed > existing.valor) {
-      updateNeeded = true;
-    }
-
-    if (updateNeeded) {
-      polar[k] = {
-        valor: parseFloat(speed.toFixed(2)),
-        tipo: currentSource
-      };
-      savePolarFirebase();
-    }
-  }
-
-  /* ════════════════════════ DASHBOARD & LOGIC ════════════════ */
-  function calcPerf() {
-    const k = pKey(S.tws, S.twa);
-    const speed = activeSpeed();
-    return (polar[k] && polar[k].valor > 0) ? Math.min(100, (speed/polar[k].valor)*100) : null;
-  }
-
-  function updateDash() {
-    const speed = activeSpeed();
-    const curVmg = vmg(speed, S.twa);
-    const k = pKey(S.tws, S.twa);
+  for (const twa of TWA_B) {
+    // FIX: usar nearest() también en el TWA al construir la key
+    const k = `${currentTwsBucket}_${nearest(TWA_B, twa)}`;
     const record = polar[k];
-    const bestBsp = (record) ? record.valor : null;
-    const perf = calcPerf();
-    const targets = getVmgTargets();
+    if (!record || !record.valor) continue;
 
-    document.getElementById('v-vmg').innerHTML = fmt(curVmg) + '<span class="unit">kn</span>';
-    document.getElementById('v-bsp').innerHTML = fmt(S.bsp) + '<span class="unit">kn</span>';
-    document.getElementById('v-tws').innerHTML = fmt(S.tws) + '<span class="unit">kn</span>';
-    document.getElementById('v-twa').innerHTML = fmt(S.twa,0)+ '<span class="unit">°</span>';
-    document.getElementById('v-awa').innerHTML = fmt(S.awa,0)+ '<span class="unit">°</span>';
-    document.getElementById('v-aws').innerHTML = fmt(S.aws) + '<span class="unit">kn</span>';
-    document.getElementById('v-sog').innerHTML = fmt(S.sog) + '<span class="unit">kn</span>';
-    document.getElementById('v-cog').innerHTML = fmt(S.cog,0)+ '<span class="unit">°</span>';
-    
-    document.getElementById('v-beat-vmg').innerHTML = targets.beatVmg ? fmt(targets.beatVmg) + '<span class="unit">kn</span>' : '—';
-    document.getElementById('v-beat-angle').textContent = targets.beatAngle;
-    document.getElementById('v-run-vmg').innerHTML = targets.runVmg ? fmt(targets.runVmg) + '<span class="unit">kn</span>' : '—';
-    document.getElementById('v-gybe-angle').textContent = targets.gybeAngle;
+    const v = vmg(record.valor, twa);
 
-    if (bestBsp) {
-      document.getElementById('v-best').textContent = fmt(bestBsp) + ' kn' + (record.tipo === 'SOG' ? ' (SOG*)' : '');
-    } else {
-      document.getElementById('v-best').textContent = '—';
+    if (twa <= 90 && v > beatVmg) {
+      beatVmg   = v;
+      beatAngle = twa;
     }
-    
-    if (CFG.motorMode) {
-      document.getElementById('v-cell').innerHTML = `<span style="color:var(--danger); font-weight:bold;">¡PAUSADO POR MOTOR!</span>`;
-    } else {
-      document.getElementById('v-cell').textContent = S.live ? `TWS ${nearest(TWS_B,S.tws)} / TWA ${nearest(TWA_B,S.twa)}°` : '—';
-    }
-
-    const pEl = document.getElementById('v-perf');
-    const pFill = document.getElementById('perf-fill');
-    const pCap = document.getElementById('perf-cap');
-    const adv = document.getElementById('v-advice');
-
-    if (CFG.motorMode) {
-      pEl.textContent = '—'; pFill.style.width = '0%'; pCap.textContent = 'Modo Motor: Captura suspendida temporalmente.';
-      adv.textContent = 'A Motor'; adv.className = 'advice-text st-bad';
-    } else if (perf !== null) {
-      pEl.textContent = fmt(perf,0) + '%';
-      pFill.style.width = perf + '%';
-      let state = perf >= CFG.thresh ? 'good' : perf >= 70 ? 'mid' : 'bad';
-
-      pEl.className = `perf-number st-${state}`;
-      pFill.className = `perf-bar-fill st-${state}`;
-      adv.className = `advice-text st-${state}`;
-
-      if (state==='good') { pCap.textContent='Rendimiento excelente respecto a tu polar'; adv.textContent='Bien trimado'; }
-      else if (state==='mid') { pCap.textContent='Margen de mejora detectado'; adv.textContent='Afinar trimado'; }
-      else { pCap.textContent='Rendimiento bajo'; adv.textContent='Revisar trimado'; }
-    } else {
-      pEl.textContent = '—'; pFill.style.width = '0%'; pCap.textContent = 'Recogiendo datos para esta celda...';
-      adv.textContent = 'Sin referencia'; adv.className = 'advice-text';
+    if (twa > 90 && v < runVmg) {
+      runVmg    = v;
+      gybeAngle = twa;
     }
   }
 
-  let histTick = 0;
-  function recordHistory() {
-    if (CFG.motorMode) return; 
-    const speed = activeSpeed();
-    const perf = calcPerf();
-    const now = new Date();
-    const ts = now.toTimeString().slice(0,8);
-    history.unshift({ t:ts, tws:S.tws, twa:S.twa, bsp:speed, vmg:vmg(speed,S.twa), perf });
-    if (history.length>200) history.pop();
+  return {
+    beatVmg:   beatVmg  > 0 ? beatVmg          : null,
+    beatAngle: beatAngle !== null ? beatAngle + "°" : "—",
+    runVmg:    runVmg   < 0 ? Math.abs(runVmg) : null,
+    gybeAngle: gybeAngle !== null ? gybeAngle + "°" : "—"
+  };
+}
+
+/* ════════════════════════ POLAR RENDER ════════════════════════ */
+function renderPolar() {
+  const curKey = pKey(S.tws, S.twa);
+  let gMax = 0;
+  for (const k in polar) { if (polar[k]?.valor > gMax) gMax = polar[k].valor; }
+
+  let h = '<thead><tr><th>TWA / TWS</th>';
+  for (const tw of TWS_B) h += `<th class="th-tws">${tw} kn</th>`;
+  h += '</tr></thead><tbody>';
+
+  for (const twa of TWA_B) {
+    h += `<tr><th>${twa}°</th>`;
+    for (const tws of TWS_B) {
+      const k = `${tws}_${twa}`;
+      const isCur = (k === curKey && S.live);
+      const record = polar[k];
+      let cls = 'c-empty', txt = '·';
+
+      if (record?.valor) {
+        txt = record.valor.toFixed(1);
+        if (record.tipo === 'SOG') {
+          cls = 'c-sog';
+          txt += '*';
+        } else {
+          const r = record.valor / gMax;
+          cls = r >= 0.99 ? 'c-record' : r >= 0.90 ? 'c-near' : '';
+        }
+      }
+      if (isCur) cls = 'c-cur';
+      h += `<td class="${cls}">${txt}</td>`;
+    }
+    h += '</tr>';
+  }
+  document.getElementById('ptable').innerHTML = h + '</tbody>';
+}
+
+/* ════════════════════════ ACTUALIZAR POLAR ════════════════════════ */
+function updatePolar() {
+  if (CFG.motorMode) return;
+  const speed = activeSpeed();
+  if (speed < CFG.minSpeed) return;
+
+  const k       = pKey(S.tws, S.twa);
+  const existing = polar[k];
+  const source   = CFG.speedSource;
+  let   changed  = false;
+
+  if (!existing?.valor) {
+    changed = true;
+  } else if (existing.tipo === 'SOG' && source === 'BSP') {
+    // BSP siempre reemplaza SOG
+    changed = true;
+  } else if (existing.tipo === source && speed > existing.valor) {
+    changed = true;
   }
 
-  function renderHistory() {
-    const tbody = document.getElementById('hist-body');
-    tbody.innerHTML = history.map(h => {
-      let pc='', pt='—';
-      if (h.perf!==null) { pt=h.perf.toFixed(0)+'%'; pc=h.perf>=CFG.thresh?'color:var(--good)':h.perf>=70?'color:var(--bronze)':'color:var(--danger)'; }
-      return `<tr><td>${h.t}</td><td>${fmt(h.tws)} kn</td><td>${fmt(h.twa,0)}°</td><td>${fmt(h.bsp)}</td><td>${fmt(h.vmg)}</td><td style="${pc}">${pt}</td></tr>`;
-    }).join('');
+  if (changed) {
+    polar[k] = { valor: parseFloat(speed.toFixed(2)), tipo: source };
+    schedulePolarSave(); // debounced
+  }
+}
+
+/* ════════════════════════ DASHBOARD ════════════════════════ */
+function calcPerf() {
+  const k = pKey(S.tws, S.twa);
+  const speed = activeSpeed();
+  return (polar[k]?.valor > 0) ? Math.min(100, (speed / polar[k].valor) * 100) : null;
+}
+
+function updateDash() {
+  const speed   = activeSpeed();
+  const curVmg  = vmg(speed, S.twa);
+  const k       = pKey(S.tws, S.twa);
+  const record  = polar[k];
+  const bestBsp = record?.valor ?? null;
+  const perf    = calcPerf();
+  const targets = getVmgTargets();
+
+  document.getElementById('v-vmg').innerHTML   = fmt(curVmg)   + '<span class="unit">kn</span>';
+  document.getElementById('v-bsp').innerHTML   = fmt(S.bsp)    + '<span class="unit">kn</span>';
+  document.getElementById('v-tws').innerHTML   = fmt(S.tws)    + '<span class="unit">kn</span>';
+  document.getElementById('v-twa').innerHTML   = fmt(S.twa, 0) + '<span class="unit">°</span>';
+  document.getElementById('v-awa').innerHTML   = fmt(S.awa, 0) + '<span class="unit">°</span>';
+  document.getElementById('v-aws').innerHTML   = fmt(S.aws)    + '<span class="unit">kn</span>';
+  document.getElementById('v-sog').innerHTML   = fmt(S.sog)    + '<span class="unit">kn</span>';
+  document.getElementById('v-cog').innerHTML   = fmt(S.cog, 0) + '<span class="unit">°</span>';
+
+  document.getElementById('v-beat-vmg').innerHTML   = targets.beatVmg   ? fmt(targets.beatVmg)  + '<span class="unit">kn</span>' : '—';
+  document.getElementById('v-beat-angle').textContent = targets.beatAngle;
+  document.getElementById('v-run-vmg').innerHTML    = targets.runVmg    ? fmt(targets.runVmg)   + '<span class="unit">kn</span>' : '—';
+  document.getElementById('v-gybe-angle').textContent = targets.gybeAngle;
+
+  document.getElementById('v-best').textContent = bestBsp
+    ? fmt(bestBsp) + ' kn' + (record.tipo === 'SOG' ? ' (SOG*)' : '')
+    : '—';
+
+  if (CFG.motorMode) {
+    document.getElementById('v-cell').innerHTML = `<span style="color:var(--danger);font-style:italic">A motor — pausado</span>`;
+  } else {
+    document.getElementById('v-cell').textContent = S.live
+      ? `TWS ${nearest(TWS_B, S.tws)} kn / TWA ${nearest(TWA_B, S.twa)}°`
+      : '—';
   }
 
-  function process() {
-    updatePolar();
-    updateDash();
-    renderPolar();
-    if (++histTick % 12 === 0) recordHistory();
+  // Performance
+  const pEl   = document.getElementById('v-perf');
+  const pFill = document.getElementById('perf-fill');
+  const pCap  = document.getElementById('perf-cap');
+  const adv   = document.getElementById('v-advice');
+
+  if (CFG.motorMode) {
+    pEl.textContent = '—'; pFill.style.width = '0%';
+    pCap.textContent = 'Captura suspendida — modo motor activo.';
+    adv.textContent = 'A Motor'; adv.className = 'advice-text st-bad';
+    pEl.className = 'perf-number';
+  } else if (perf !== null) {
+    pEl.textContent = fmt(perf, 0) + '%';
+    pFill.style.width = perf + '%';
+    const st = perf >= CFG.thresh ? 'good' : perf >= 70 ? 'mid' : 'bad';
+    pEl.className   = `perf-number st-${st}`;
+    pFill.className = `perf-bar-fill st-${st}`;
+    adv.className   = `advice-text st-${st}`;
+    if (st === 'good')     { pCap.textContent = 'Rendimiento óptimo respecto a la polar'; adv.textContent = 'Bien trimado'; }
+    else if (st === 'mid') { pCap.textContent = 'Margen de mejora detectado'; adv.textContent = 'Afinar trimado'; }
+    else                   { pCap.textContent = 'Rendimiento bajo — revisar velas y trimado'; adv.textContent = 'Revisar trimado'; }
+  } else {
+    pEl.textContent = '—'; pFill.style.width = '0%'; pEl.className = 'perf-number';
+    pCap.textContent = 'Acumulando datos para esta celda...';
+    adv.textContent = 'Sin referencia'; adv.className = 'advice-text';
   }
+}
 
-  /* ════════════════ NMEA PARSER (OPTIMIZADO PARA B&G VULCAN) ════════════════ */
-  function parseNMEA(line) {
-    line = line.trim(); 
-    if (!line.startsWith('$')) return;
-    
-    const p = line.split(','); 
-    const t = p[0]; 
-    
-    if (t.endsWith('VHW')) { 
-      const v = parseFloat(p[5]); 
-      if (!isNaN(v)) S.bsp = v; 
-    }
-    else if (t.endsWith('MWV')) {
-      const a = parseFloat(p[1]);
-      const r = p[2];
-      const sp = parseFloat(p[3]);
-      if (r === 'R' && !isNaN(a) && !isNaN(sp)) { S.awa = a; S.aws = sp; }
-      if (r === 'T' && !isNaN(a) && !isNaN(sp)) { S.twa = a; S.tws = sp; }
-    }
-    else if (t.endsWith('VTG') || t.endsWith('RMC')) {
-      const sg = parseFloat(p[7]);
-      const cg = parseFloat(p[8]); 
-      if (!isNaN(sg)) S.sog = sg; 
-      if (!isNaN(cg)) S.cog = cg;
-    }
+/* ════════════════════════ HISTORIAL ════════════════════════ */
+let histTick = 0;
+function recordHistory() {
+  if (CFG.motorMode) return;
+  const speed = activeSpeed();
+  const perf  = calcPerf();
+  const now   = new Date();
+  const entry = {
+    timestamp: now.toISOString(),                                    // para ordenar en Firebase
+    t:   now.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'}) + ' ' + now.toTimeString().slice(0,8),
+    tws: S.tws,  twa: S.twa,
+    spd: parseFloat(speed.toFixed(2)),
+    vmg: parseFloat(vmg(speed, S.twa).toFixed(2)),
+    perf: perf !== null ? parseFloat(perf.toFixed(1)) : null,
+    src: CFG.speedSource
+  };
+  history.unshift(entry);
+  if (history.length > 500) history.pop();
+  saveHistoryEntry(entry);   // persiste en Firestore (no bloqueante)
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('hist-body');
+  if (!history.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--ink-3);padding:24px;font-style:italic">Sin registros aún</td></tr>';
+    return;
   }
+  tbody.innerHTML = history.map(h => {
+    let pc = '', pt = '—';
+    if (h.perf !== null && h.perf !== undefined) {
+      pt = h.perf.toFixed(0) + '%';
+      pc = h.perf >= CFG.thresh ? 'c-ph-good' : h.perf >= 70 ? 'c-ph-mid' : 'c-ph-bad';
+    }
+    return `<tr>
+      <td class="ts">${h.t}</td>
+      <td>${fmt(h.tws)} kn</td>
+      <td>${fmt(h.twa, 0)}°</td>
+      <td>${fmt(h.spd)}</td>
+      <td>${fmt(h.vmg)}</td>
+      <td class="${pc}">${pt}</td>
+      <td class="src">${h.src || '—'}</td>
+    </tr>`;
+  }).join('');
+}
 
-  function connect(host, port) {
-    if (ws) { ws.close(); }
-    document.getElementById('signal-label').textContent = 'conectando…';
-    ws = new WebSocket(`ws://${host}:${port}`);
-    ws.onopen = () => { S.live=true; document.getElementById('signal-pip').className='on'; document.getElementById('signal-label').textContent=`${host}:${port}`; };
-    ws.onmessage = e => { e.data.split('\n').forEach(parseNMEA); process(); };
-    ws.onclose = () => { S.live=false; document.getElementById('signal-pip').className=''; document.getElementById('signal-label').textContent='sin señal'; };
-    ws.onerror = ws.onclose;
+/* ════════════════════════ ESTADÍSTICAS ════════════════════════ */
+function updateStats() {
+  const total   = Object.keys(polar).length;
+  const maxCells = TWS_B.length * TWA_B.length;
+  const sogCells = Object.values(polar).filter(r => r?.tipo === 'SOG').length;
+  const bspCells = Object.values(polar).filter(r => r?.tipo === 'BSP').length;
+
+  document.getElementById('stat-total').textContent  = total;
+  document.getElementById('stat-bsp').textContent    = bspCells;
+  document.getElementById('stat-sog').textContent    = sogCells;
+  document.getElementById('stat-hist').textContent   = history.length;
+  document.getElementById('stat-cover').textContent  = Math.round((total/maxCells)*100) + '%';
+}
+
+/* ════════════════════════ NMEA PARSER ════════════════════════ */
+function parseNMEA(line) {
+  line = line.trim();
+  if (!line.startsWith('$')) return;
+  const p = line.split(',');
+  const t = p[0];
+  if (t.endsWith('VHW')) {
+    const v = parseFloat(p[5]); if (!isNaN(v)) S.bsp = v;
+  } else if (t.endsWith('MWV')) {
+    const a = parseFloat(p[1]), r = p[2], sp = parseFloat(p[3]);
+    if (r==='R' && !isNaN(a) && !isNaN(sp)) { S.awa=a; S.aws=sp; }
+    if (r==='T' && !isNaN(a) && !isNaN(sp)) { S.twa=a; S.tws=sp; }
+  } else if (t.endsWith('VTG') || t.endsWith('RMC')) {
+    const sg=parseFloat(p[7]), cg=parseFloat(p[8]);
+    if (!isNaN(sg)) S.sog=sg; if (!isNaN(cg)) S.cog=cg;
   }
+}
 
-  /* ════════════════════════ EVENTOS UI ════════════════════════ */
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('panel-'+tab.dataset.p).classList.add('active');
-      if (tab.dataset.p==='polar') renderPolar();
-      if (tab.dataset.p==='history') renderHistory();
-    });
-  });
+/* ════════════════════════ PROCESS (CADA TRAMA NMEA) ════════════════════════ */
+function process() {
+  updatePolar();
+  updateDash();
+  renderPolar();
+  if (++histTick % 15 === 0) {   // ~cada 6s a 2.5Hz
+    recordHistory();
+    updateStats();
+  }
+}
 
-  document.getElementById('motor-btn').addEventListener('click', function() {
-    CFG.motorMode = !CFG.motorMode;
-    if (CFG.motorMode) {
-      this.classList.add('active');
-      this.innerHTML = "<span>⚠️ MOTO-ON</span>";
-      document.getElementById('fb-signal').textContent = "Nube: Pausado (Motor)";
-    } else {
-      this.classList.remove('active');
-      this.innerHTML = "<span>⚙️ Motor</span>";
-      document.getElementById('fb-signal').textContent = "Nube: OK";
-    }
-    updateDash();
-  });
+/* ════════════════════════ CONEXIÓN ════════════════════════ */
+function connect(host, port) {
+  if (ws) { ws.close(); ws = null; }
+  document.getElementById('signal-label').textContent = 'conectando…';
+  ws = new WebSocket(`ws://${host}:${port}`);
+  ws.onopen    = () => {
+    S.live = true;
+    document.getElementById('signal-pip').className = 'on';
+    document.getElementById('signal-label').textContent = `${host}:${port}`;
+  };
+  ws.onmessage = e => { e.data.split('\n').forEach(parseNMEA); process(); };
+  ws.onclose = ws.onerror = () => {
+    S.live = false;
+    document.getElementById('signal-pip').className = '';
+    document.getElementById('signal-label').textContent = 'sin señal';
+  };
+}
 
-  document.getElementById('conn-btn').addEventListener('click', () => { document.getElementById('overlay').style.display='flex'; });
-  document.getElementById('m-conn').addEventListener('click', () => {
-    const h = document.getElementById('m-host').value.trim()||'192.168.0.1';
-    const p = document.getElementById('m-port').value.trim()||'10110';
-    document.getElementById('overlay').style.display='none';
-    connect(h, p);
+/* ════════════════════════ EVENTOS UI ════════════════════════ */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.p).classList.add('active');
+    if (tab.dataset.p === 'polar')    renderPolar();
+    if (tab.dataset.p === 'history')  { loadHistoryFirebase(); }
+    if (tab.dataset.p === 'settings') updateStats();
   });
+});
 
-  document.getElementById('cfg-thresh').addEventListener('input', function() {
-    CFG.thresh=+this.value; document.getElementById('thresh-v').textContent=this.value+'%';
-  });
-  
-  document.getElementById('cfg-source').addEventListener('change', function() {
-    CFG.speedSource = this.value;
-  });
+// Motor mode
+document.getElementById('motor-btn').addEventListener('click', function() {
+  CFG.motorMode = !CFG.motorMode;
+  if (CFG.motorMode) {
+    this.classList.add('active');
+    this.innerHTML = '⚠ Motor ON';
+    setFbStatus('Nube: Pausado (motor)');
+  } else {
+    this.classList.remove('active');
+    this.innerHTML = '⚙ Motor';
+    setFbStatus('Nube: OK', 'synced');
+  }
+  updateDash();
+});
 
-  document.getElementById('clear-cell-btn').addEventListener('click', () => {
-    const k = pKey(S.tws, S.twa);
-    if (!polar[k] || !polar[k].valor) {
-      alert("La celda correspondiente a las condiciones actuales ya está vacía.");
-      return;
-    }
-    if (confirm(`¿Quieres borrar el registro de la celda actual (${nearest(TWS_B, S.tws)} kn / ${nearest(TWA_B, S.twa)}°)?`)) {
-      delete polar[k];
-      savePolarFirebase();
-      renderPolar();
-      updateDash();
-      alert("Celda eliminada.");
-    }
-  });
+// Conexión
+document.getElementById('conn-btn').addEventListener('click', () => {
+  document.getElementById('overlay').style.display = 'flex';
+});
+document.getElementById('m-conn').addEventListener('click', () => {
+  const h = document.getElementById('m-host').value.trim() || '192.168.0.1';
+  const p = document.getElementById('m-port').value.trim() || '10110';
+  document.getElementById('overlay').style.display = 'none';
+  connect(h, p);
+});
+document.getElementById('m-cancel').addEventListener('click', () => {
+  document.getElementById('overlay').style.display = 'none';
+});
 
-  /* INICIALIZACIÓN AUTOMÁTICA AL CARGAR */
-  loadPolarFirebase();
+// Ajustes
+document.getElementById('cfg-thresh').addEventListener('input', function() {
+  CFG.thresh = +this.value;
+  document.getElementById('thresh-v').textContent = this.value + '%';
+});
+document.getElementById('cfg-source').addEventListener('change', function() {
+  CFG.speedSource = this.value;
+});
+document.getElementById('cfg-minspeed').addEventListener('change', function() {
+  CFG.minSpeed = +this.value;
+});
+
+// Borrar celda actual
+document.getElementById('clear-cell-btn').addEventListener('click', () => {
+  const k = pKey(S.tws, S.twa);
+  if (!polar[k]?.valor) { alert('La celda actual está vacía.'); return; }
+  const label = `${nearest(TWS_B, S.tws)} kn / ${nearest(TWA_B, S.twa)}°`;
+  if (confirm(`¿Borrar registro de la celda actual (${label})?`)) {
+    delete polar[k];
+    schedulePolarSave();
+    renderPolar(); updateDash(); updateStats();
+  }
+});
+
+// Borrar toda la polar (con confirmación doble)
+document.getElementById('clear-polar-btn').addEventListener('click', async () => {
+  if (!confirm('¿Borrar TODA la tabla polar? Esta acción no se puede deshacer.')) return;
+  if (!confirm('Segunda confirmación: ¿seguro que quieres borrar toda la polar?')) return;
+  polar = {};
+  await flushPolarSave();
+  renderPolar(); updateDash(); updateStats();
+});
+
+// Purgar solo celdas SOG
+document.getElementById('purge-sog-btn').addEventListener('click', async () => {
+  const sogKeys = Object.keys(polar).filter(k => polar[k]?.tipo === 'SOG');
+  if (!sogKeys.length) { alert('No hay celdas SOG registradas.'); return; }
+  if (!confirm(`¿Purgar ${sogKeys.length} celdas registradas con SOG?`)) return;
+  sogKeys.forEach(k => delete polar[k]);
+  await flushPolarSave();
+  renderPolar(); updateDash(); updateStats();
+});
+
+/* ════════════════════════ INICIO ════════════════════════ */
+loadPolarFirebase();
+loadHistoryFirebase();
 </script>
 </head>
 <body>
 <div id="app">
 
   <header>
-    <div class="wordmark">Evolution Tamborilero <em>/ v2.1 </em></div>
+    <div class="wordmark">Evolution Tamborilero <em>/ v3.0</em></div>
     <div class="header-right">
-      <button id="motor-btn"><span>⚙️ Motor</span></button>
-      <div id="fb-signal">Nube: Conectando...</div>
+      <button id="motor-btn">⚙ Motor</button>
+      <span id="fb-signal">Nube: Conectando...</span>
       <div id="signal">
         <div id="signal-pip"></div>
         <span id="signal-label">sin señal</span>
@@ -558,14 +718,16 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 
   <nav>
     <div class="tab active" data-p="dash">Instrumentos</div>
-    <div class="tab" data-p="polar">Polar Dinámica</div>
+    <div class="tab" data-p="polar">Polar</div>
     <div class="tab" data-p="history">Historial</div>
     <div class="tab" data-p="settings">Ajustes</div>
   </nav>
 
   <div id="content">
 
+    <!-- DASHBOARD -->
     <div class="panel active" id="panel-dash">
+
       <div class="row-top">
         <div class="hero-cell">
           <span class="cell-label">VMG Actual</span>
@@ -581,38 +743,38 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
 
       <div class="row-targets">
         <div class="instr-cell">
-          <span class="cell-label" style="color:var(--navy)">Óptimo Ceñida (Beat VMG)</span>
+          <span class="cell-label" style="color:var(--navy)">Beat VMG</span>
           <div class="value-lg" id="v-beat-vmg" style="color:var(--navy)">—</div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label" style="color:var(--navy)">Ángulo Ceñida (Beat Angle)</span>
+          <span class="cell-label" style="color:var(--navy)">Beat Angle</span>
           <div class="value-lg" id="v-beat-angle" style="color:var(--navy)">—</div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label" style="color:var(--bronze)">Óptimo Popa (Run VMG)</span>
+          <span class="cell-label" style="color:var(--bronze)">Run VMG</span>
           <div class="value-lg" id="v-run-vmg" style="color:var(--bronze)">—</div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label" style="color:var(--bronze)">Ángulo Trasluchada (Gybe Ang.)</span>
+          <span class="cell-label" style="color:var(--bronze)">Gybe Angle</span>
           <div class="value-lg" id="v-gybe-angle" style="color:var(--bronze)">—</div>
         </div>
       </div>
 
       <div class="row-mid">
         <div class="instr-cell">
-          <span class="cell-label">Velocidad del Barco (BSP)</span>
+          <span class="cell-label">BSP (corredera)</span>
           <div class="value-lg" id="v-bsp">—<span class="unit">kn</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">TWS (Int. Viento)</span>
+          <span class="cell-label">TWS</span>
           <div class="value-lg" id="v-tws">—<span class="unit">kn</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">TWA (Áng. Viento Real)</span>
+          <span class="cell-label">TWA</span>
           <div class="value-lg" id="v-twa">—<span class="unit">°</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">AWA (Áng. Aparente)</span>
+          <span class="cell-label">AWA</span>
           <div class="value-lg" id="v-awa">—<span class="unit">°</span></div>
         </div>
       </div>
@@ -631,86 +793,146 @@ table.ptable td.c-sog-fade { color: var(--ink-3); font-style: italic; }
           <div class="value-lg" id="v-cog">—<span class="unit">°</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">Récord en Celda</span>
+          <span class="cell-label">Récord en celda</span>
           <div class="value-lg" id="v-best">—</div>
         </div>
       </div>
 
       <div class="vmg-banner">
         <div class="vmg-banner-cell">
-          <span class="cell-label">Celda Polar Actual</span>
+          <span class="cell-label">Celda polar actual</span>
           <div class="value-md" id="v-cell">—</div>
         </div>
         <div class="vmg-banner-cell">
-          <span class="cell-label">Estado de Trimado</span>
+          <span class="cell-label">Estado de trimado</span>
           <div class="advice-text" id="v-advice">Esperando NMEA...</div>
         </div>
+        <div class="vmg-banner-cell">
+          <span class="cell-label">Fuente activa</span>
+          <div class="value-md" id="v-source-display" style="font-size:1.2rem;color:var(--ink-2)">SOG</div>
+        </div>
       </div>
+
     </div>
 
+    <!-- POLAR -->
     <div class="panel" id="panel-polar">
       <div class="polar-head">
         <div>
-          <span class="polar-title">Tabla Polar Dinámica en Firebase</span>
-          <span class="polar-subtitle">Valores en Nudos</span>
+          <span class="polar-title">Tabla Polar Dinámica</span>
+          <span class="polar-subtitle">nudos · sincronizada con Firebase</span>
         </div>
       </div>
       <div class="polar-legend">
-        <div class="leg"><span class="leg-sog">En gris itálica con asterisco (7.2*)</span> = Registrado con SOG. Se sobrescribirá automáticamente cuando pases con BoatSpeed.</div>
+        Los valores en gris cursiva con asterisco <span class="leg-sog">(7.2*)</span> fueron registrados con SOG.
+        Se sobrescribirán automáticamente al pasar por la misma celda con BSP activo.
       </div>
       <div class="polar-wrap">
         <table class="ptable" id="ptable"></table>
       </div>
     </div>
 
+    <!-- HISTORIAL -->
     <div class="panel" id="panel-history">
       <table class="hist-table">
         <thead>
-          <tr><th>Hora</th><th>TWS</th><th>TWA</th><th>Velocidad</th><th>VMG</th><th>Perf</th></tr>
+          <tr>
+            <th>Fecha / Hora</th>
+            <th>TWS</th><th>TWA</th>
+            <th>Velocidad</th><th>VMG</th>
+            <th>Rendimiento</th><th>Fuente</th>
+          </tr>
         </thead>
-        <tbody id="hist-body"></tbody>
+        <tbody id="hist-body">
+          <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-3);font-style:italic">Cargando...</td></tr>
+        </tbody>
       </table>
     </div>
 
+    <!-- AJUSTES -->
     <div class="panel" id="panel-settings">
+
       <div class="cfg-section">
-        <div class="cfg-title">Configuración de Entrada</div>
-        <div class="cfg-row">
-          <label><strong>Fuente Activa para la sesión actual:</strong></label>
-          <select id="cfg-source" style="border: 1px solid var(--navy); font-weight: 500;">
-            <option value="BSP">BSP (BoatSpeed / Corredera - RECOMENDADO)</option>
-            <option value="SOG">SOG (GPS / Para cuando no haya corredera disponible)</option>
-          </select>
-        </div>
-        <div class="cfg-row">
-          <label>Umbral de Rendimiento óptimo</label>
-          <input type="range" id="cfg-thresh" min="50" max="99" value="85">
-          <span id="thresh-v">85%</span>
+        <div class="cfg-title">Estadísticas de datos</div>
+        <div class="cfg-stats">
+          <div class="stat-box"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Celdas polar</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-bsp">—</div><div class="stat-lbl">Con BSP</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-sog">—</div><div class="stat-lbl">Con SOG*</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-hist">—</div><div class="stat-lbl">Registros hist.</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-cover">—</div><div class="stat-lbl">Cobertura polar</div></div>
         </div>
       </div>
 
       <div class="cfg-section">
-        <div class="cfg-title" style="color:var(--danger)">Control de Errores y Depuración de Datos</div>
+        <div class="cfg-title">Configuración de medición</div>
         <div class="cfg-row">
-          <div>
-            <p><strong>Limpiar Celda Actual</strong></p>
-            <p style="font-size:0.75rem; color:var(--ink-2)">Si se grabó un dato falso a motor por descuido, limpia la celda actual según el viento de este momento.</p>
-          </div>
-          <button class="danger-btn" id="clear-cell-btn">Borrar Celda Actual</button>
+          <label>
+            Fuente de velocidad activa
+            <small>BSP cuando funcione la corredera, SOG mientras tanto</small>
+          </label>
+          <select id="cfg-source">
+            <option value="SOG" selected>SOG (GPS — provisional)</option>
+            <option value="BSP">BSP (corredera — recomendado)</option>
+          </select>
+        </div>
+        <div class="cfg-row">
+          <label>
+            Umbral rendimiento óptimo
+            <small>Por debajo de este % se avisa de mal trimado</small>
+          </label>
+          <input type="range" id="cfg-thresh" min="50" max="99" value="85">
+          <span class="cfg-val" id="thresh-v">85%</span>
+        </div>
+        <div class="cfg-row">
+          <label>
+            Velocidad mínima para registrar
+            <small>No se guardan datos por debajo de este umbral</small>
+          </label>
+          <input type="number" id="cfg-minspeed" value="2.0" step="0.5" min="0" style="width:80px"> kn
         </div>
       </div>
+
+      <div class="cfg-section">
+        <div class="cfg-title" style="color:var(--danger)">Gestión de datos</div>
+        <div class="cfg-row">
+          <label>
+            Limpiar celda actual
+            <small>Borra el registro de la celda correspondiente a las condiciones de este momento</small>
+          </label>
+          <button class="danger-btn" id="clear-cell-btn">Borrar celda</button>
+        </div>
+        <div class="cfg-row">
+          <label>
+            Purgar celdas SOG
+            <small>Elimina todas las celdas registradas con SOG para rellenarlas con BSP desde cero</small>
+          </label>
+          <button class="danger-btn" id="purge-sog-btn">Purgar SOG*</button>
+        </div>
+        <div class="cfg-row">
+          <label>
+            Borrar toda la polar
+            <small>Doble confirmación requerida. Irreversible.</small>
+          </label>
+          <button class="danger-btn" id="clear-polar-btn">Borrar polar</button>
+        </div>
+      </div>
+
     </div>
 
   </div>
 </div>
 
+<!-- MODAL -->
 <div id="overlay" style="display:none;">
   <div id="modal">
-    <h2>Conexión Local del Barco</h2>
-    <p>Introduce la IP/Puerto del servidor NMEA 0183 (Zeus, Vulcan, etc.)</p>
+    <h2>Conexión del barco</h2>
+    <p>Introduce la IP y puerto del servidor NMEA 0183 (Zeus, Vulcan, Triton...).</p>
+    <label class="m-label">Dirección IP</label>
     <input class="m-input" id="m-host" placeholder="192.168.0.1" value="192.168.0.1">
+    <label class="m-label">Puerto TCP</label>
     <input class="m-input" id="m-port" placeholder="10110" value="10110">
-    <button class="m-btn primary" id="m-conn">Conectar Sistema de Abordo</button>
+    <button class="m-btn primary" id="m-conn">Conectar</button>
+    <button class="m-btn ghost" id="m-cancel">Cancelar</button>
   </div>
 </div>
 
