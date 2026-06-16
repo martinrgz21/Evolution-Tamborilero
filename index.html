@@ -24,10 +24,23 @@
   --sans:     'Inter', system-ui, sans-serif;
 }
 
+/* MODO NOCHE INTEGRADO */
+body.night-mode {
+  --bg:       #0d0000;
+  --surface:  #1a0000;
+  --rule:     #330000;
+  --ink:      #ff3333;
+  --ink-2:    #aa0000;
+  --ink-3:    #550000;
+  --navy:     #ff0000;
+  --bronze:   #ff6666;
+  --good:     #ff3333;
+}
+
 html, body {
   height: 100dvh; overflow: hidden; background: var(--bg);
   color: var(--ink); font-family: var(--sans); font-size: 14px;
-  -webkit-font-smoothing: antialiased;
+  -webkit-font-smoothing: antialiased; transition: background 0.3s, color 0.3s;
 }
 
 #app { display: flex; flex-direction: column; height: 100dvh; }
@@ -52,7 +65,7 @@ header {
 #fb-signal.synced { color: var(--good); }
 #fb-signal.error  { color: var(--danger); }
 
-#motor-btn {
+#night-btn, #motor-btn {
   font-family: var(--sans); font-size: .72rem; font-weight: 600;
   letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
   background: transparent; border: 1px solid var(--rule); padding: 5px 12px;
@@ -155,6 +168,7 @@ table.ptable td.c-empty   { color: var(--rule); font-size: .75rem; }
 table.ptable td.c-record  { color: var(--navy); font-weight: bold; }
 table.ptable td.c-near    { color: var(--bronze); }
 table.ptable td.c-cur     { background: rgba(43,76,126,.1); color: var(--navy); font-weight: bold; outline: 1px solid rgba(43,76,126,.3); outline-offset: -1px; }
+body.night-mode table.ptable td.c-cur { background: rgba(255,0,0,.25); outline: 1px solid rgba(255,0,0,.5); }
 table.ptable td.c-sog     { color: var(--ink-3); font-style: italic; }
 
 /* ── HISTORY ── */
@@ -236,7 +250,7 @@ table.ptable td.c-sog     { color: var(--ink-3); font-style: italic; }
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCH9QilfBI6lorKexzFASfF_wHqtrVLPHU",
@@ -254,11 +268,20 @@ const db  = getFirestore(app);
 const S = { bsp:0, tws:0, twa:0, awa:0, aws:0, cog:0, sog:0, live:false };
 const CFG = { thresh:85, minSpeed:2.0, speedSource:'SOG', motorMode:false };
 
+// FILTRO DE AMORTIGUACIÓN (Damping de 3 segundos para estabilidad en iPad)
+const BUFFER_SIZE = 6;
+const buffers = { bsp:[], tws:[], twa:[] };
+function addWithDamping(type, value) {
+  buffers[type].push(value);
+  if (buffers[type].length > BUFFER_SIZE) buffers[type].shift();
+  return buffers[type].reduce((a,b)=>a+b, 0) / buffers[type].length;
+}
+
 const TWS_B = [5,8,10,12,14,16,18,20,25,30];
 const TWA_B = [30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180];
 
 let polar   = {};
-let history = [];   // cargado desde Firebase al inicio
+let history = [];   
 let ws      = null;
 
 /* ════════════════════════ UTILS ════════════════════════ */
@@ -270,13 +293,10 @@ const activeSpeed = () => CFG.speedSource === 'BSP' ? S.bsp : S.sog;
 
 function setFbStatus(text, cls='') {
   const el = document.getElementById('fb-signal');
-  el.textContent = text;
-  el.className = cls;
+  if(el) { el.textContent = text; el.className = cls; }
 }
 
 /* ════════════════════════ FIREBASE — POLAR ════════════════════════ */
-
-// Debounce: espera 2.5s de silencio antes de escribir en Firestore
 let _polarSaveTimer = null;
 function schedulePolarSave() {
   clearTimeout(_polarSaveTimer);
@@ -312,8 +332,6 @@ async function loadPolarFirebase() {
 }
 
 /* ════════════════════════ FIREBASE — HISTORIAL ════════════════════════ */
-
-// Guarda una entrada de historial en su propia colección
 async function saveHistoryEntry(entry) {
   try {
     await addDoc(collection(db, "historial"), entry);
@@ -322,14 +340,9 @@ async function saveHistoryEntry(entry) {
   }
 }
 
-// Carga las últimas 500 entradas ordenadas por timestamp
 async function loadHistoryFirebase() {
   try {
-    const q = query(
-      collection(db, "historial"),
-      orderBy("timestamp", "desc"),
-      limit(500)
-    );
+    const q = query(collection(db, "historial"), orderBy("timestamp", "desc"), limit(500));
     const snap = await getDocs(q);
     history = snap.docs.map(d => d.data());
     renderHistory();
@@ -339,7 +352,7 @@ async function loadHistoryFirebase() {
   }
 }
 
-/* ════════════════════════ VMG TARGETS ════════════════════════ */
+/* ════════════════════════ VMG TARGETS FIX ════════════════════════ */
 function getVmgTargets() {
   let beatVmg = 0, beatAngle = null;
   let runVmg  = 0, gybeAngle = null;
@@ -347,27 +360,24 @@ function getVmgTargets() {
   const currentTwsBucket = nearest(TWS_B, S.tws);
 
   for (const twa of TWA_B) {
-    // FIX: usar nearest() también en el TWA al construir la key
-    const k = `${currentTwsBucket}_${nearest(TWA_B, twa)}`;
+    const k = `${currentTwsBucket}_${twa}`;
     const record = polar[k];
     if (!record || !record.valor) continue;
 
     const v = vmg(record.valor, twa);
 
-    if (twa <= 90 && v > beatVmg) {
-      beatVmg   = v;
-      beatAngle = twa;
-    }
-    if (twa > 90 && v < runVmg) {
-      runVmg    = v;
-      gybeAngle = twa;
+    if (twa <= 90) {
+      if (v > beatVmg) { beatVmg = v; beatAngle = twa; }
+    } else {
+      // FIX LÓGICO: Usar valor absoluto para encontrar la mayor VMG real de popa
+      if (Math.abs(v) > runVmg) { runVmg = Math.abs(v); gybeAngle = twa; }
     }
   }
 
   return {
-    beatVmg:   beatVmg  > 0 ? beatVmg          : null,
+    beatVmg:   beatVmg > 0 ? beatVmg : null,
     beatAngle: beatAngle !== null ? beatAngle + "°" : "—",
-    runVmg:    runVmg   < 0 ? Math.abs(runVmg) : null,
+    runVmg:    runVmg > 0 ? runVmg : null,
     gybeAngle: gybeAngle !== null ? gybeAngle + "°" : "—"
   };
 }
@@ -392,10 +402,8 @@ function renderPolar() {
 
       if (record?.valor) {
         txt = record.valor.toFixed(1);
-        if (record.tipo === 'SOG') {
-          cls = 'c-sog';
-          txt += '*';
-        } else {
+        if (record.tipo === 'SOG') { cls = 'c-sog'; txt += '*'; } 
+        else {
           const r = record.valor / gMax;
           cls = r >= 0.99 ? 'c-record' : r >= 0.90 ? 'c-near' : '';
         }
@@ -419,18 +427,13 @@ function updatePolar() {
   const source   = CFG.speedSource;
   let   changed  = false;
 
-  if (!existing?.valor) {
-    changed = true;
-  } else if (existing.tipo === 'SOG' && source === 'BSP') {
-    // BSP siempre reemplaza SOG
-    changed = true;
-  } else if (existing.tipo === source && speed > existing.valor) {
-    changed = true;
-  }
+  if (!existing?.valor) { changed = true; } 
+  else if (existing.tipo === 'SOG' && source === 'BSP') { changed = true; } 
+  else if (existing.tipo === source && speed > existing.valor) { changed = true; }
 
   if (changed) {
     polar[k] = { valor: parseFloat(speed.toFixed(2)), tipo: source };
-    schedulePolarSave(); // debounced
+    schedulePolarSave();
   }
 }
 
@@ -464,19 +467,14 @@ function updateDash() {
   document.getElementById('v-run-vmg').innerHTML    = targets.runVmg    ? fmt(targets.runVmg)   + '<span class="unit">kn</span>' : '—';
   document.getElementById('v-gybe-angle').textContent = targets.gybeAngle;
 
-  document.getElementById('v-best').textContent = bestBsp
-    ? fmt(bestBsp) + ' kn' + (record.tipo === 'SOG' ? ' (SOG*)' : '')
-    : '—';
+  document.getElementById('v-best').textContent = bestBsp ? fmt(bestBsp) + ' kn' + (record.tipo === 'SOG' ? ' (SOG*)' : '') : '—';
 
   if (CFG.motorMode) {
     document.getElementById('v-cell').innerHTML = `<span style="color:var(--danger);font-style:italic">A motor — pausado</span>`;
   } else {
-    document.getElementById('v-cell').textContent = S.live
-      ? `TWS ${nearest(TWS_B, S.tws)} kn / TWA ${nearest(TWA_B, S.twa)}°`
-      : '—';
+    document.getElementById('v-cell').textContent = S.live ? `TWS ${nearest(TWS_B, S.tws)} kn / TWA ${nearest(TWA_B, S.twa)}°` : '—';
   }
 
-  // Performance
   const pEl   = document.getElementById('v-perf');
   const pFill = document.getElementById('perf-fill');
   const pCap  = document.getElementById('perf-cap');
@@ -485,22 +483,17 @@ function updateDash() {
   if (CFG.motorMode) {
     pEl.textContent = '—'; pFill.style.width = '0%';
     pCap.textContent = 'Captura suspendida — modo motor activo.';
-    adv.textContent = 'A Motor'; adv.className = 'advice-text st-bad';
-    pEl.className = 'perf-number';
+    adv.textContent = 'A Motor'; adv.className = 'advice-text st-bad'; pEl.className = 'perf-number';
   } else if (perf !== null) {
-    pEl.textContent = fmt(perf, 0) + '%';
-    pFill.style.width = perf + '%';
+    pEl.textContent = fmt(perf, 0) + '%'; pFill.style.width = perf + '%';
     const st = perf >= CFG.thresh ? 'good' : perf >= 70 ? 'mid' : 'bad';
-    pEl.className   = `perf-number st-${st}`;
-    pFill.className = `perf-bar-fill st-${st}`;
-    adv.className   = `advice-text st-${st}`;
-    if (st === 'good')     { pCap.textContent = 'Rendimiento óptimo respecto a la polar'; adv.textContent = 'Bien trimado'; }
-    else if (st === 'mid') { pCap.textContent = 'Margen de mejora detectado'; adv.textContent = 'Afinar trimado'; }
+    pEl.className   = `perf-number st-${st}`; pFill.className = `perf-bar-fill st-${st}`; adv.className   = `advice-text st-${st}`;
+    if (st === 'good')     { pCap.textContent = 'Rendimiento óptimo respecto a la polar'; adv.textContent = 'Bien trimado'; } 
+    else if (st === 'mid') { pCap.textContent = 'Margen de mejora detectado'; adv.textContent = 'Afinar trimado'; } 
     else                   { pCap.textContent = 'Rendimiento bajo — revisar velas y trimado'; adv.textContent = 'Revisar trimado'; }
   } else {
     pEl.textContent = '—'; pFill.style.width = '0%'; pEl.className = 'perf-number';
-    pCap.textContent = 'Acumulando datos para esta celda...';
-    adv.textContent = 'Sin referencia'; adv.className = 'advice-text';
+    pCap.textContent = 'Acumulando datos para esta celda...'; adv.textContent = 'Sin referencia'; adv.className = 'advice-text';
   }
 }
 
@@ -512,9 +505,9 @@ function recordHistory() {
   const perf  = calcPerf();
   const now   = new Date();
   const entry = {
-    timestamp: now.toISOString(),                                    // para ordenar en Firebase
+    timestamp: now.toISOString(),
     t:   now.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'}) + ' ' + now.toTimeString().slice(0,8),
-    tws: S.tws,  twa: S.twa,
+    tws: parseFloat(S.tws.toFixed(1)), twa: parseFloat(S.twa.toFixed(0)),
     spd: parseFloat(speed.toFixed(2)),
     vmg: parseFloat(vmg(speed, S.twa).toFixed(2)),
     perf: perf !== null ? parseFloat(perf.toFixed(1)) : null,
@@ -522,7 +515,7 @@ function recordHistory() {
   };
   history.unshift(entry);
   if (history.length > 500) history.pop();
-  saveHistoryEntry(entry);   // persiste en Firestore (no bloqueante)
+  saveHistoryEntry(entry); 
 }
 
 function renderHistory() {
@@ -563,30 +556,31 @@ function updateStats() {
   document.getElementById('stat-cover').textContent  = Math.round((total/maxCells)*100) + '%';
 }
 
-/* ════════════════════════ NMEA PARSER ════════════════════════ */
+/* ════════════════════════ NMEA PARSER + DAMPING ════════════════════════ */
 function parseNMEA(line) {
   line = line.trim();
   if (!line.startsWith('$')) return;
   const p = line.split(',');
   const t = p[0];
   if (t.endsWith('VHW')) {
-    const v = parseFloat(p[5]); if (!isNaN(v)) S.bsp = v;
+    const v = parseFloat(p[5]); if (!isNaN(v)) S.bsp = addWithDamping('bsp', v);
   } else if (t.endsWith('MWV')) {
     const a = parseFloat(p[1]), r = p[2], sp = parseFloat(p[3]);
     if (r==='R' && !isNaN(a) && !isNaN(sp)) { S.awa=a; S.aws=sp; }
-    if (r==='T' && !isNaN(a) && !isNaN(sp)) { S.twa=a; S.tws=sp; }
+    if (r==='T' && !isNaN(a) && !isNaN(sp)) { 
+      S.twa = addWithDamping('twa', a);
+      S.tws = addWithDamping('tws', sp);
+    }
   } else if (t.endsWith('VTG') || t.endsWith('RMC')) {
     const sg=parseFloat(p[7]), cg=parseFloat(p[8]);
     if (!isNaN(sg)) S.sog=sg; if (!isNaN(cg)) S.cog=cg;
   }
 }
 
-/* ════════════════════════ PROCESS (CADA TRAMA NMEA) ════════════════════════ */
 function process() {
   updatePolar();
   updateDash();
-  renderPolar();
-  if (++histTick % 15 === 0) {   // ~cada 6s a 2.5Hz
+  if (++histTick % 15 === 0) {   
     recordHistory();
     updateStats();
   }
@@ -601,6 +595,9 @@ function connect(host, port) {
     S.live = true;
     document.getElementById('signal-pip').className = 'on';
     document.getElementById('signal-label').textContent = `${host}:${port}`;
+    // Guardar en persistencia local del iPad
+    localStorage.setItem('nmea_host', host);
+    localStorage.setItem('nmea_port', port);
   };
   ws.onmessage = e => { e.data.split('\n').forEach(parseNMEA); process(); };
   ws.onclose = ws.onerror = () => {
@@ -623,22 +620,25 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-// Motor mode
 document.getElementById('motor-btn').addEventListener('click', function() {
   CFG.motorMode = !CFG.motorMode;
   if (CFG.motorMode) {
-    this.classList.add('active');
-    this.innerHTML = '⚠ Motor ON';
+    this.classList.add('active'); this.innerHTML = '⚠ Motor ON';
     setFbStatus('Nube: Pausado (motor)');
   } else {
-    this.classList.remove('active');
-    this.innerHTML = '⚙ Motor';
+    this.classList.remove('active'); this.innerHTML = '⚙ Motor';
     setFbStatus('Nube: OK', 'synced');
   }
   updateDash();
 });
 
-// Conexión
+document.getElementById('night-btn').addEventListener('click', function() {
+  document.body.classList.toggle('night-mode');
+  const isNight = document.body.classList.contains('night-mode');
+  this.innerHTML = isNight ? "☀️ Día" : "🌙 Noche";
+  localStorage.setItem('night_mode', isNight);
+});
+
 document.getElementById('conn-btn').addEventListener('click', () => {
   document.getElementById('overlay').style.display = 'flex';
 });
@@ -652,50 +652,48 @@ document.getElementById('m-cancel').addEventListener('click', () => {
   document.getElementById('overlay').style.display = 'none';
 });
 
-// Ajustes
 document.getElementById('cfg-thresh').addEventListener('input', function() {
   CFG.thresh = +this.value;
   document.getElementById('thresh-v').textContent = this.value + '%';
 });
-document.getElementById('cfg-source').addEventListener('change', function() {
-  CFG.speedSource = this.value;
-});
-document.getElementById('cfg-minspeed').addEventListener('change', function() {
-  CFG.minSpeed = +this.value;
-});
+document.getElementById('cfg-source').addEventListener('change', function() { CFG.speedSource = this.value; });
+document.getElementById('cfg-minspeed').addEventListener('change', function() { CFG.minSpeed = +this.value; });
 
-// Borrar celda actual
 document.getElementById('clear-cell-btn').addEventListener('click', () => {
   const k = pKey(S.tws, S.twa);
   if (!polar[k]?.valor) { alert('La celda actual está vacía.'); return; }
   const label = `${nearest(TWS_B, S.tws)} kn / ${nearest(TWA_B, S.twa)}°`;
   if (confirm(`¿Borrar registro de la celda actual (${label})?`)) {
-    delete polar[k];
-    schedulePolarSave();
-    renderPolar(); updateDash(); updateStats();
+    delete polar[k]; schedulePolarSave(); renderPolar(); updateDash(); updateStats();
   }
 });
 
-// Borrar toda la polar (con confirmación doble)
 document.getElementById('clear-polar-btn').addEventListener('click', async () => {
   if (!confirm('¿Borrar TODA la tabla polar? Esta acción no se puede deshacer.')) return;
-  if (!confirm('Segunda confirmación: ¿seguro que quieres borrar toda la polar?')) return;
-  polar = {};
-  await flushPolarSave();
-  renderPolar(); updateDash(); updateStats();
+  if (!confirm('Segunda confirmation: ¿seguro que quieres borrar toda la polar?')) return;
+  polar = {}; await flushPolarSave(); renderPolar(); updateDash(); updateStats();
 });
 
-// Purgar solo celdas SOG
 document.getElementById('purge-sog-btn').addEventListener('click', async () => {
   const sogKeys = Object.keys(polar).filter(k => polar[k]?.tipo === 'SOG');
   if (!sogKeys.length) { alert('No hay celdas SOG registradas.'); return; }
   if (!confirm(`¿Purgar ${sogKeys.length} celdas registradas con SOG?`)) return;
-  sogKeys.forEach(k => delete polar[k]);
-  await flushPolarSave();
-  renderPolar(); updateDash(); updateStats();
+  sogKeys.forEach(k => delete polar[k]); await flushPolarSave(); renderPolar(); updateDash(); updateStats();
 });
 
-/* ════════════════════════ INICIO ════════════════════════ */
+/* ════════════════════════ AUTORUN IPAD ════════════════════════ */
+const savedHost = localStorage.getItem('nmea_host');
+const savedPort = localStorage.getItem('nmea_port');
+if (savedHost && savedPort) {
+  document.getElementById('m-host').value = savedHost;
+  document.getElementById('m-port').value = savedPort;
+  setTimeout(() => connect(savedHost, savedPort), 800);
+}
+if (localStorage.getItem('night_mode') === 'true') {
+  document.body.classList.add('night-mode');
+  document.getElementById('night-btn').innerHTML = "☀️ Día";
+}
+
 loadPolarFirebase();
 loadHistoryFirebase();
 </script>
@@ -704,8 +702,9 @@ loadHistoryFirebase();
 <div id="app">
 
   <header>
-    <div class="wordmark">Evolution Tamborilero <em>/ v3.0</em></div>
+    <div class="wordmark">Evolution Tamborilero <em>/ v3.1</em></div>
     <div class="header-right">
+      <button id="night-btn">🌙 Noche</button>
       <button id="motor-btn">⚙ Motor</button>
       <span id="fb-signal">Nube: Conectando...</span>
       <div id="signal">
@@ -725,7 +724,6 @@ loadHistoryFirebase();
 
   <div id="content">
 
-    <!-- DASHBOARD -->
     <div class="panel active" id="panel-dash">
 
       <div class="row-top">
@@ -762,19 +760,19 @@ loadHistoryFirebase();
 
       <div class="row-mid">
         <div class="instr-cell">
-          <span class="cell-label">BSP (corredera)</span>
+          <span class="cell-label">Velocidad Barco (Amortiguada)</span>
           <div class="value-lg" id="v-bsp">—<span class="unit">kn</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">TWS</span>
+          <span class="cell-label">TWS (Intensidad Viento)</span>
           <div class="value-lg" id="v-tws">—<span class="unit">kn</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">TWA</span>
+          <span class="cell-label">TWA (Ángulo Viento Real)</span>
           <div class="value-lg" id="v-twa">—<span class="unit">°</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">AWA</span>
+          <span class="cell-label">AWA (Ángulo Aparente)</span>
           <div class="value-lg" id="v-awa">—<span class="unit">°</span></div>
         </div>
       </div>
@@ -793,145 +791,123 @@ loadHistoryFirebase();
           <div class="value-lg" id="v-cog">—<span class="unit">°</span></div>
         </div>
         <div class="instr-cell">
-          <span class="cell-label">Récord en celda</span>
+          <span class="cell-label">Récord en Celda</span>
           <div class="value-lg" id="v-best">—</div>
         </div>
       </div>
 
       <div class="vmg-banner">
         <div class="vmg-banner-cell">
-          <span class="cell-label">Celda polar actual</span>
+          <span class="cell-label">Celda Polar Actual</span>
           <div class="value-md" id="v-cell">—</div>
         </div>
         <div class="vmg-banner-cell">
-          <span class="cell-label">Estado de trimado</span>
+          <span class="cell-label">Estado de Trimado</span>
           <div class="advice-text" id="v-advice">Esperando NMEA...</div>
         </div>
-        <div class="vmg-banner-cell">
-          <span class="cell-label">Fuente activa</span>
-          <div class="value-md" id="v-source-display" style="font-size:1.2rem;color:var(--ink-2)">SOG</div>
-        </div>
       </div>
-
     </div>
 
-    <!-- POLAR -->
     <div class="panel" id="panel-polar">
       <div class="polar-head">
         <div>
-          <span class="polar-title">Tabla Polar Dinámica</span>
-          <span class="polar-subtitle">nudos · sincronizada con Firebase</span>
+          <span class="polar-title">Tabla Polar Dinámica en Firebase</span>
+          <span class="polar-subtitle">Valores en Nudos</span>
         </div>
       </div>
       <div class="polar-legend">
-        Los valores en gris cursiva con asterisco <span class="leg-sog">(7.2*)</span> fueron registrados con SOG.
-        Se sobrescribirán automáticamente al pasar por la misma celda con BSP activo.
+        Los valores corresponden al récord de velocidad registrado. Los datos marcados con <span class="leg-sog">*</span> proceden de SOG (GPS) en ausencia de corredera.
       </div>
       <div class="polar-wrap">
         <table class="ptable" id="ptable"></table>
       </div>
     </div>
 
-    <!-- HISTORIAL -->
     <div class="panel" id="panel-history">
       <table class="hist-table">
         <thead>
-          <tr>
-            <th>Fecha / Hora</th>
-            <th>TWS</th><th>TWA</th>
-            <th>Velocidad</th><th>VMG</th>
-            <th>Rendimiento</th><th>Fuente</th>
-          </tr>
+          <tr><th>Hora</th><th>TWS</th><th>TWA</th><th>Velocidad</th><th>VMG</th><th>Perf</th><th>Origen</th></tr>
         </thead>
-        <tbody id="hist-body">
-          <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--ink-3);font-style:italic">Cargando...</td></tr>
-        </tbody>
+        <tbody id="hist-body"></tbody>
       </table>
     </div>
 
-    <!-- AJUSTES -->
     <div class="panel" id="panel-settings">
-
       <div class="cfg-section">
-        <div class="cfg-title">Estadísticas de datos</div>
-        <div class="cfg-stats">
-          <div class="stat-box"><div class="stat-val" id="stat-total">—</div><div class="stat-lbl">Celdas polar</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-bsp">—</div><div class="stat-lbl">Con BSP</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-sog">—</div><div class="stat-lbl">Con SOG*</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-hist">—</div><div class="stat-lbl">Registros hist.</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-cover">—</div><div class="stat-lbl">Cobertura polar</div></div>
-        </div>
-      </div>
-
-      <div class="cfg-section">
-        <div class="cfg-title">Configuración de medición</div>
+        <div class="cfg-title">Configuración de Entrada</div>
         <div class="cfg-row">
-          <label>
-            Fuente de velocidad activa
-            <small>BSP cuando funcione la corredera, SOG mientras tanto</small>
+          <label>Fuente Activa para la sesión actual:
+            <small>BSP prioriza la dinámica del agua; SOG calcula sobre fondo.</small>
           </label>
-          <select id="cfg-source">
-            <option value="SOG" selected>SOG (GPS — provisional)</option>
-            <option value="BSP">BSP (corredera — recomendado)</option>
+          <select id="cfg-source" style="border:1px solid var(--navy); font-weight:500;">
+            <option value="BSP">BSP (BoatSpeed / Corredera)</option>
+            <option value="SOG" selected>SOG (GPS)</option>
           </select>
         </div>
         <div class="cfg-row">
-          <label>
-            Umbral rendimiento óptimo
-            <small>Por debajo de este % se avisa de mal trimado</small>
+          <label>Velocidad mínima de registro (kn)
+            <small>Evita registrar ruido o corrientes estando parados.</small>
           </label>
-          <input type="range" id="cfg-thresh" min="50" max="99" value="85">
-          <span class="cfg-val" id="thresh-v">85%</span>
+          <input type="number" id="cfg-minspeed" min="0.5" max="5.0" step="0.5" value="2.0">
         </div>
         <div class="cfg-row">
-          <label>
-            Velocidad mínima para registrar
-            <small>No se guardan datos por debajo de este umbral</small>
-          </label>
-          <input type="number" id="cfg-minspeed" value="2.0" step="0.5" min="0" style="width:80px"> kn
+          <label>Umbral de Rendimiento óptimo</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="range" id="cfg-thresh" min="50" max="99" value="85">
+            <span class="cfg-val" id="thresh-v">85%</span>
+          </div>
         </div>
       </div>
 
       <div class="cfg-section">
-        <div class="cfg-title" style="color:var(--danger)">Gestión de datos</div>
-        <div class="cfg-row">
-          <label>
-            Limpiar celda actual
-            <small>Borra el registro de la celda correspondiente a las condiciones de este momento</small>
-          </label>
-          <button class="danger-btn" id="clear-cell-btn">Borrar celda</button>
-        </div>
-        <div class="cfg-row">
-          <label>
-            Purgar celdas SOG
-            <small>Elimina todas las celdas registradas con SOG para rellenarlas con BSP desde cero</small>
-          </label>
-          <button class="danger-btn" id="purge-sog-btn">Purgar SOG*</button>
-        </div>
-        <div class="cfg-row">
-          <label>
-            Borrar toda la polar
-            <small>Doble confirmación requerida. Irreversible.</small>
-          </label>
-          <button class="danger-btn" id="clear-polar-btn">Borrar polar</button>
+        <div class="cfg-title">Estadísticas del Sistema</div>
+        <div class="cfg-stats">
+          <div class="stat-box"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Celdas Corp.</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-bsp">0</div><div class="stat-lbl">Registros BSP</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-sog">0</div><div class="stat-lbl">Registros SOG</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-hist">0</div><div class="stat-lbl">Entradas Hist.</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-cover">0%</div><div class="stat-lbl">Cobertura</div></div>
         </div>
       </div>
 
+      <div class="cfg-section">
+        <div class="cfg-title" style="color:var(--danger)">Mantenimiento de Base de Datos</div>
+        <div class="cfg-row">
+          <label>Limpiar Celda Actual
+            <small>Elimina el valor guardado para las condiciones de viento actuales.</small>
+          </label>
+          <button class="danger-btn" id="clear-cell-btn">Borrar Celda</button>
+        </div>
+        <div class="cfg-row">
+          <label>Purgar registros SOG
+            <small>Elimina de la tabla únicamente las celdas generadas con GPS (*).</small>
+          </label>
+          <button class="danger-btn" id="purge-sog-btn">Purgar SOG</button>
+        </div>
+        <div class="cfg-row">
+          <label>Reiniciar Tabla Polar
+            <small style="color:var(--danger)">Atención: Borra por completo todas las marcas de velocidad de la nube.</small>
+          </label>
+          <button class="danger-btn" id="clear-polar-btn">Borrar Todo</button>
+        </div>
+      </div>
     </div>
 
   </div>
 </div>
 
-<!-- MODAL -->
 <div id="overlay" style="display:none;">
   <div id="modal">
-    <h2>Conexión del barco</h2>
-    <p>Introduce la IP y puerto del servidor NMEA 0183 (Zeus, Vulcan, Triton...).</p>
-    <label class="m-label">Dirección IP</label>
-    <input class="m-input" id="m-host" placeholder="192.168.0.1" value="192.168.0.1">
-    <label class="m-label">Puerto TCP</label>
-    <input class="m-input" id="m-port" placeholder="10110" value="10110">
-    <button class="m-btn primary" id="m-conn">Conectar</button>
+    <h2>Conexión Local de Abordo</h2>
+    <p>Introduce la dirección IP y el puerto de tu servidor de datos NMEA 0183 (Vulcan, Zeus, etc.)</p>
+    
+    <label class="m-label">Dirección IP del Servidor</label>
+    <input class="m-input" id="m-host" type="text" placeholder="192.168.0.1" value="192.168.0.1">
+    
+    <label class="m-label">Puerto WebSocket</label>
+    <input class="m-input" id="m-port" type="text" placeholder="10110" value="10110">
+    
+    <button class="m-btn primary" id="m-conn">Conectar Sistema</button>
     <button class="m-btn ghost" id="m-cancel">Cancelar</button>
   </div>
 </div>
