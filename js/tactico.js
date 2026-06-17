@@ -81,22 +81,22 @@ export function drawTacticalMap(S, CFG, polar) {
 
   if (REGATA.pin && REGATA.comite) {
     const pPx = toPx(REGATA.pin.x, REGATA.pin.y), cPx = toPx(REGATA.comite.x, REGATA.comite.y);
-    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy'); ctx.lineWidth = 3;
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy'); ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(pPx.x, pPx.y); ctx.lineTo(cPx.x, cPx.y); ctx.stroke();
-    ctx.fillStyle = '#8b1a1a'; ctx.beginPath(); ctx.arc(pPx.x, pPx.y, 7, 0, 2*Math.PI); ctx.fill();
-    ctx.fillStyle = '#2d5c3f'; ctx.beginPath(); ctx.arc(cPx.x, cPx.y, 7, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = '#b22222'; ctx.beginPath(); ctx.arc(pPx.x, pPx.y, 6, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = '#227046'; ctx.beginPath(); ctx.arc(cPx.x, cPx.y, 6, 0, 2*Math.PI); ctx.fill();
   }
 
   if (REGATA.barlovento) {
     const bPx = toPx(REGATA.barlovento.x, REGATA.barlovento.y);
-    ctx.fillStyle = '#b8915a'; ctx.beginPath(); ctx.arc(bPx.x, bPx.y, 8, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = '#a37f4c'; ctx.beginPath(); ctx.arc(bPx.x, bPx.y, 7, 0, 2*Math.PI); ctx.fill();
 
     const twd = S.cog + S.twa, targetC = getTargetCeñidaAngle(polar, S.tws);
     const leRad = ((90 - (twd - targetC)) * Math.PI) / 180, lbRad = ((90 - (twd + targetC)) * Math.PI) / 180;
 
-    ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = '#2b4c7e'; ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(leRad)*300, bPx.y + Math.sin(leRad)*300); ctx.stroke();
-    ctx.strokeStyle = '#b8915a'; ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(lbRad)*300, bPx.y + Math.sin(lbRad)*300); ctx.stroke();
+    ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy'); ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(leRad)*300, bPx.y + Math.sin(leRad)*300); ctx.stroke();
+    ctx.strokeStyle = '#a37f4c'; ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(lbRad)*300, bPx.y + Math.sin(lbRad)*300); ctx.stroke();
     ctx.setLineDash([]);
   }
 

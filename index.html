@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Evolution Tamborilero</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
   <header>
-    <div class="wordmark">Evolution Tamborilero <em>/ v4.0</em></div>
+    <div class="wordmark">Evolution Tamborilero <span class="version">/ v4.0</span></div>
     <div class="header-right">
-      <button id="night-btn">🌙 Noche</button>
-      <button id="motor-btn">⚙ Motor</button>
+      <button id="night-btn">Modo Noche</button>
+      <button id="motor-btn">Modo Motor</button>
       <span id="fb-signal">Nube: Conectando...</span>
       <div id="signal"><div id="signal-pip"></div><span id="signal-label">sin señal</span></div>
       <button id="conn-btn">Configurar Red</button>
@@ -88,9 +88,9 @@
         </div>
         <div class="mark-buttons">
           <span class="cell-label">Configuración del Campo</span>
-          <button class="strat-btn" id="btn-mark-comite">🚩 Marcar Comité</button>
-          <button class="strat-btn" id="btn-mark-pin">⚠️ Marcar Pin</button>
-          <button class="strat-btn" id="btn-mark-barlo">🟡 Marcar Barlovento</button>
+          <button class="strat-btn" id="btn-mark-comite">Marcar Comité</button>
+          <button class="strat-btn" id="btn-mark-pin">Marcar Pin</button>
+          <button class="strat-btn" id="btn-mark-barlo">Marcar Barlovento</button>
         </div>
       </div>
       <div class="strat-map-container"><canvas id="strat-canvas"></canvas></div>

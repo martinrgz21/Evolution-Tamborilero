@@ -19,6 +19,7 @@ function addWithDamping(type, value) {
 
 const activeSpeed = () => CFG.speedSource === 'BSP' ? S.bsp : S.sog;
 const calcPerf = () => {
+  if (CFG.motorMode) return null;
   const k = pKey(S.tws, S.twa);
   return (polar[k]?.valor > 0) ? Math.min(100, (activeSpeed() / polar[k].valor) * 100) : null;
 };
@@ -60,6 +61,7 @@ function getVmgTargets() {
 
 function updateDash() {
   const speed = activeSpeed(); const perf = calcPerf(); const targets = getVmgTargets(); const k = pKey(S.tws, S.twa);
+  
   document.getElementById('v-vmg').innerHTML = fmt(vmg(speed, S.twa)) + '<span class="unit">kn</span>';
   document.getElementById('v-bsp').innerHTML = fmt(S.bsp) + '<span class="unit">kn</span>';
   document.getElementById('v-tws').innerHTML = fmt(S.tws) + '<span class="unit">kn</span>';
@@ -74,14 +76,30 @@ function updateDash() {
   document.getElementById('v-run-vmg').innerHTML = targets.runVmg ? fmt(targets.runVmg) + '<span class="unit">kn</span>' : '—';
   document.getElementById('v-gybe-angle').textContent = targets.gybeAngle;
   document.getElementById('v-best').textContent = polar[k]?.valor ? fmt(polar[k].valor) + ' kn' : '—';
+  document.getElementById('v-cell').textContent = S.live ? k.replace('_', ' kn / ') + '°' : '—';
 
   const pEl = document.getElementById('v-perf'); const pFill = document.getElementById('perf-fill');
-  if (perf !== null && !CFG.motorMode) {
+  const advEl = document.getElementById('v-advice');
+
+  if (CFG.motorMode) {
+    pEl.textContent = 'MOTOR'; pFill.style.width = '0%'; pEl.className = 'perf-number';
+    pFill.className = 'perf-bar-fill';
+    advEl.textContent = "Propulsión mecánica activa"; advEl.className = "advice-text";
+    return;
+  }
+
+  if (perf !== null) {
     pEl.textContent = fmt(perf, 0) + '%'; pFill.style.width = perf + '%';
     const st = perf >= CFG.thresh ? 'good' : perf >= 70 ? 'mid' : 'bad';
     pEl.className = `perf-number st-${st}`; pFill.className = `perf-bar-fill st-${st}`;
+    
+    if(st === 'good') { advEl.textContent = "Buen trimado. Manteniendo objetivo."; advEl.className = "advice-text st-good"; }
+    else if(st === 'mid') { advEl.textContent = "Rendimiento mejorable. Revisa escotas."; advEl.className = "advice-text st-mid"; }
+    else { advEl.textContent = "Bajo rendimiento. Angulo o trimado incorrecto."; advEl.className = "advice-text st-bad"; }
   } else {
     pEl.textContent = '—'; pFill.style.width = '0%'; pEl.className = 'perf-number';
+    advEl.textContent = S.live ? "Faltan registros en esta celda polar" : "Esperando datos NMEA...";
+    advEl.className = "advice-text";
   }
 }
 
@@ -107,7 +125,7 @@ function updatePolarTable() {
   for (const twa of TWA_B) {
     h += `<tr><th>${twa}°</th>`;
     for (const tws of TWS_B) {
-      const k = `${tws}_${twa}`; const isCur = (k === curKey && S.live);
+      const k = `${tws}_${twa}`; const isCur = (k === curKey && S.live && !CFG.motorMode);
       h += `<td class="${isCur ? 'c-cur' : polar[k]?.valor ? 'c-record' : 'c-empty'}">${polar[k]?.valor ? polar[k].valor.toFixed(1) : '·'}</td>`;
     }
     h += '</tr>';
@@ -132,8 +150,16 @@ function process() {
   updatePolar(); updateDash();
   calculateTactics(S, activeSpeed()); updateStratPanel();
   drawTacticalMap(S, CFG, polar);
-  if (++histTick % 15 === 0) {
-    const entry = { timestamp: new Date().toISOString(), t: new Date().toLocaleTimeString(), tws: S.tws, twa: S.twa, spd: activeSpeed(), perf: calcPerf() };
+  
+  if (++histTick % 15 === 0 && S.live) {
+    const entry = { 
+      timestamp: new Date().toISOString(), 
+      t: new Date().toLocaleTimeString(), 
+      tws: S.tws, twa: S.twa, 
+      spd: activeSpeed(), 
+      perf: calcPerf(),
+      src: CFG.motorMode ? 'MOTOR' : CFG.speedSource
+    };
     history.unshift(entry); saveHistoryEntry(entry);
   }
 }
@@ -148,6 +174,7 @@ function connect(host, port) {
 
 async function init() {
   polar = await loadPolarFirebase();
+  
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -157,6 +184,20 @@ async function init() {
       if (tab.dataset.p === 'polar') updatePolarTable();
       if (tab.dataset.p === 'settings') updateStats();
     });
+  });
+
+  // Lógica robusta Modo Motor
+  const motorBtn = document.getElementById('motor-btn');
+  motorBtn.addEventListener('click', () => {
+    CFG.motorMode = !CFG.motorMode;
+    if(CFG.motorMode) {
+      motorBtn.classList.add('active');
+      motorBtn.textContent = "Motor Activo";
+    } else {
+      motorBtn.classList.remove('active');
+      motorBtn.textContent = "Modo Motor";
+    }
+    process();
   });
 
   document.getElementById('strat-sync-btn').addEventListener('click', () => {
