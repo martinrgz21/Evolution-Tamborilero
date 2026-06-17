@@ -71,8 +71,8 @@ export function drawTacticalMap(S, CFG, polar) {
   const scale = (rect.height * 0.6) / maxDist;
 
   ctx.clearRect(0, 0, rect.width, rect.height);
-  const inkColor = getComputedStyle(document.body).getPropertyValue('--ink');
   const ruleColor = getComputedStyle(document.body).getPropertyValue('--rule');
+  const navyColor = getComputedStyle(document.body).getPropertyValue('--navy');
 
   ctx.strokeStyle = ruleColor; ctx.lineWidth = 0.5;
   for(let r=50; r <= maxDist; r+=50) { ctx.beginPath(); ctx.arc(cx, cy, r * scale, 0, 2*Math.PI); ctx.stroke(); }
@@ -81,7 +81,7 @@ export function drawTacticalMap(S, CFG, polar) {
 
   if (REGATA.pin && REGATA.comite) {
     const pPx = toPx(REGATA.pin.x, REGATA.pin.y), cPx = toPx(REGATA.comite.x, REGATA.comite.y);
-    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy'); ctx.lineWidth = 2.5;
+    ctx.strokeStyle = navyColor; ctx.lineWidth = 2.5;
     ctx.beginPath(); ctx.moveTo(pPx.x, pPx.y); ctx.lineTo(cPx.x, cPx.y); ctx.stroke();
     ctx.fillStyle = '#b22222'; ctx.beginPath(); ctx.arc(pPx.x, pPx.y, 6, 0, 2*Math.PI); ctx.fill();
     ctx.fillStyle = '#227046'; ctx.beginPath(); ctx.arc(cPx.x, cPx.y, 6, 0, 2*Math.PI); ctx.fill();
@@ -95,14 +95,15 @@ export function drawTacticalMap(S, CFG, polar) {
     const leRad = ((90 - (twd - targetC)) * Math.PI) / 180, lbRad = ((90 - (twd + targetC)) * Math.PI) / 180;
 
     ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy'); ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(leRad)*300, bPx.y + Math.sin(leRad)*300); ctx.stroke();
+    ctx.strokeStyle = navyColor; ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(leRad)*300, bPx.y + Math.sin(leRad)*300); ctx.stroke();
     ctx.strokeStyle = '#a37f4c'; ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(lbRad)*300, bPx.y + Math.sin(lbRad)*300); ctx.stroke();
     ctx.setLineDash([]);
   }
 
+  // Renderizado del barco en color azul marino (--navy) dinámico según modo
   ctx.save(); ctx.translate(cx, cy); ctx.rotate((S.cog * Math.PI) / 180);
   const lPx = CFG.eslora * scale, mPx = lPx * 0.32;
-  ctx.fillStyle = inkColor; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--surface'); ctx.lineWidth = 1.5;
+  ctx.fillStyle = navyColor; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--surface'); ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(0, -lPx/2); ctx.quadraticCurveTo(mPx/2, -lPx/6, mPx/2, lPx/2); ctx.lineTo(-mPx/2, lPx/2); ctx.quadraticCurveTo(-mPx/2, -lPx/6, 0, -lPx/2);
   ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
 }
