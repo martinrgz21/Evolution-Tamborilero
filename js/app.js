@@ -192,7 +192,6 @@ function init() {
   document.getElementById('btn-clear-history')?.addEventListener('click', () => {
     historyLog = [];
     renderHistoryTable();
-    alert('Historial borrado.');
   });
 
   document.getElementById('btn-clear-marks')?.addEventListener('click', () => {
@@ -202,7 +201,6 @@ function init() {
     REGATA.distLine = null;
     REGATA.ttl = null;
     REGATA.action = '—';
-    alert('Marcas eliminadas.');
   });
 }
 
