@@ -1,12 +1,13 @@
 import { drawTacticalMap, calculateTactics, REGATA, CONFIG_MAPA } from './tactico.js';
 
-const S = { sog: 0, cog: 0, tws: 0, twa: 0, hdg: 0, bsp: 0, lat: 42.2345, lon: -8.7234 };
-const CFG = { ip: '127.0.0.1', port: '8080', speedSource: 'SOG', eslora: 12 };
-let polarData = null;
+const S = { sog: 0, cog: 0, tws: 0, twa: 0, hdg: 0, bsp: 0, lat: 42.0, lon: -8.0 };
+const CFG = { ip: '192.168.0.1', port: '10110', speedSource: 'SOG', eslora: 12 };
+let polarData = {};
 let ws = null;
 let historyLog = [];
 let lastLogTime = 0;
 
+// Navegación entre pestañas de la interfaz
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -20,19 +21,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 async function loadPolar() {
   try {
     const r = await fetch('data/polar.json');
-    if (!r.ok) throw new Error();
     polarData = await r.json();
     buildPolarTable();
   } catch (e) {
-    console.warn("Aviso: Sin data/polar.json. Rendimiento al 0%, el resto sigue funcionando.");
-    polarData = {}; 
+    console.error("Error cargando el archivo de polares", e);
   }
 }
 
 function buildPolarTable() {
   const headers = document.getElementById('polar-headers');
   const body = document.getElementById('polar-body');
-  if (!headers || !body || !polarData) return;
+  if (!headers || !body) return;
 
   import('./tactico.js').then(m => {
     headers.innerHTML = '<th>TWA \\ TWS</th>' + m.TWS_B.map(s => `<th>${s}kn</th>`).join('');
@@ -83,6 +82,46 @@ function parseNmea(line) {
   }
 }
 
+function calculatePerformance() {
+  import('./tactico.js').then(m => {
+    const speedAct = CFG.speedSource === 'SOG' ? S.sog : S.bsp;
+    const key = m.pKey(S.tws, S.twa);
+    const target = polarData[key]?.valor || 0;
+
+    const currentCell = document.getElementById(`p_${m.nearest(m.TWS_B, S.tws)}-${m.nearest(m.TWA_B, S.twa)}`);
+    document.querySelectorAll('#table-polar td').forEach(td => td.classList.remove('highlight-cell'));
+    if (currentCell) currentCell.classList.add('highlight-cell');
+
+    let perf = 0;
+    if (target > 0) perf = (speedAct / target) * 100;
+
+    document.getElementById('val-perf').textContent = perf > 0 ? `${perf.toFixed(1)}%` : '—';
+    const fill = document.getElementById('perf-fill');
+    if (fill) fill.style.width = `${Math.min(perf, 120)}%`;
+
+    calculateTactics(S, speedAct);
+    logHistory(perf);
+  });
+}
+
+function logHistory(perf) {
+  const now = Date.now();
+  if (now - lastLogTime < 15000) return; // Registro estricto cada 15 segundos
+  lastLogTime = now;
+
+  const timeStr = new Date().toLocaleTimeString();
+  const entry = { time: timeStr, sog: S.sog, cog: S.cog, tws: S.tws, twa: S.twa, perf: perf };
+  historyLog.unshift(entry);
+  if (historyLog.length > 50) historyLog.pop();
+
+  const tbody = document.getElementById('history-body');
+  if (tbody) {
+    tbody.innerHTML = historyLog.map(e => `
+      <tr><td>${e.time}</td><td>${e.sog.toFixed(1)}</td><td>${e.cog.toFixed(0)}°</td><td>${e.tws.toFixed(1)}</td><td>${e.twa.toFixed(0)}°</td><td>${e.perf > 0 ? e.perf.toFixed(0)+'%' : '—'}</td></tr>
+    `).join('');
+  }
+}
+
 function updateUI() {
   document.getElementById('val-sog').textContent = S.sog.toFixed(1);
   document.getElementById('val-cog').textContent = S.cog.toFixed(0);
@@ -91,57 +130,17 @@ function updateUI() {
   document.getElementById('val-hdg').textContent = S.hdg.toFixed(0);
   document.getElementById('val-bsp').textContent = S.bsp.toFixed(1);
 
-  let perf = 0;
-  const speedAct = CFG.speedSource === 'SOG' ? S.sog : S.bsp;
-  
+  calculatePerformance();
+  drawTacticalMap(S, CFG, polarData);
+
   import('./tactico.js').then(m => {
-    if (polarData && Object.keys(polarData).length > 0) {
-      const key = m.pKey(S.tws, S.twa);
-      const target = polarData[key]?.valor || 0;
-
-      const currentCell = document.getElementById(`p_${m.nearest(m.TWS_B, S.tws)}-${m.nearest(m.TWA_B, S.twa)}`);
-      document.querySelectorAll('#table-polar td').forEach(td => td.classList.remove('highlight-cell'));
-      if (currentCell) currentCell.classList.add('highlight-cell');
-
-      if (target > 0) perf = (speedAct / target) * 100;
-    }
-
-    document.getElementById('val-perf').textContent = perf > 0 ? `${perf.toFixed(1)}%` : '—';
-    const fill = document.getElementById('perf-fill');
-    if (fill) fill.style.width = `${Math.min(perf, 120)}%`;
-
-    calculateTactics(S, speedAct);
-    drawTacticalMap(S, CFG, polarData);
-
     document.getElementById('strat-dist').textContent = m.fmt(REGATA.distLine, 0) + ' m';
     document.getElementById('strat-ttl').textContent = REGATA.ttl ? `${Math.floor(REGATA.ttl/60)}m ${Math.floor(REGATA.ttl%60)}s` : '—';
     document.getElementById('strat-action').textContent = REGATA.action;
-
-    logHistory(perf);
   });
 }
 
-function logHistory(perf) {
-  const now = Date.now();
-  if (now - lastLogTime < 15000) return; 
-  lastLogTime = now;
-
-  const timeStr = new Date().toLocaleTimeString();
-  const entry = { time: timeStr, sog: S.sog, cog: S.cog, tws: S.tws, twa: S.twa, perf: perf };
-  historyLog.unshift(entry);
-  if (historyLog.length > 50) historyLog.pop();
-
-  renderHistoryTable();
-}
-
-function renderHistoryTable() {
-  const tbody = document.getElementById('history-body');
-  if (!tbody) return;
-  tbody.innerHTML = historyLog.map(e => `
-    <tr><td>${e.time}</td><td>${e.sog.toFixed(1)}</td><td>${e.cog.toFixed(0)}°</td><td>${e.tws.toFixed(1)}</td><td>${e.twa.toFixed(0)}°</td><td>${e.perf > 0 ? e.perf.toFixed(0)+'%' : '—'}</td></tr>
-  `).join('');
-}
-
+// Lógica del Cronómetro de Regata
 setInterval(() => {
   if (!REGATA.chronoActive) return;
   if (REGATA.chrono > 0) {
@@ -171,37 +170,22 @@ function init() {
   document.getElementById('btn-set-comite')?.addEventListener('click', () => { REGATA.comite = { lat: S.lat, lon: S.lon }; });
   document.getElementById('btn-set-barlovento')?.addEventListener('click', () => { REGATA.barlovento = { lat: S.lat, lon: S.lon }; });
 
+  // Botón interruptor para controlar el Autocentrado del Mapa
   const autocenterBtn = document.getElementById('btn-autocenter');
   if (autocenterBtn) {
     autocenterBtn.addEventListener('click', () => {
-      import('./tactico.js').then((modulo) => {
-        modulo.CONFIG_MAPA.autocenter = !modulo.CONFIG_MAPA.autocenter;
-        if (modulo.CONFIG_MAPA.autocenter) {
-          autocenterBtn.textContent = "Autocentrado: ON";
-          autocenterBtn.style.background = "var(--surface)";
-          autocenterBtn.style.color = "var(--navy)";
-        } else {
-          autocenterBtn.textContent = "Autocentrado: OFF";
-          autocenterBtn.style.background = "transparent";
-          autocenterBtn.style.color = "var(--ink-2)";
-        }
-      });
+      CONFIG_MAPA.autocenter = !CONFIG_MAPA.autocenter;
+      if (CONFIG_MAPA.autocenter) {
+        autocenterBtn.textContent = "Autocentrado: ON";
+        autocenterBtn.style.background = "var(--surface)";
+        autocenterBtn.style.color = "var(--navy)";
+      } else {
+        autocenterBtn.textContent = "Autocentrado: OFF";
+        autocenterBtn.style.background = "transparent";
+        autocenterBtn.style.color = "var(--ink-2)";
+      }
     });
   }
-
-  document.getElementById('btn-clear-history')?.addEventListener('click', () => {
-    historyLog = [];
-    renderHistoryTable();
-  });
-
-  document.getElementById('btn-clear-marks')?.addEventListener('click', () => {
-    REGATA.pin = null;
-    REGATA.comite = null;
-    REGATA.barlovento = null;
-    REGATA.distLine = null;
-    REGATA.ttl = null;
-    REGATA.action = '—';
-  });
 }
 
 window.addEventListener('DOMContentLoaded', init);

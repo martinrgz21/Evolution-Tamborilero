@@ -12,6 +12,7 @@ export const pKey = (tws,twa) => `${nearest(TWS_B,tws)}_${nearest(TWA_B,twa)}`;
 export const vmg = (speed,twa) => speed * Math.cos(twa * Math.PI/180);
 export const fmt = (v,d=1) => (typeof v==='number'&&!isNaN(v)) ? v.toFixed(d) : '—';
 
+// Configuración global de la vista del lienzo táctico
 export let CONFIG_MAPA = { autocenter: true };
 let offsetX = 0;
 let offsetY = 0;
@@ -30,7 +31,6 @@ function getMetersFromLatLon(targetLat, targetLon, baseLat, baseLon) {
 }
 
 function getTargetCeñidaAngle(polar, currentTws) {
-  if (!polar || Object.keys(polar).length === 0) return 45; 
   const twsBucket = nearest(TWS_B, currentTws);
   let bestVmg = 0, targetTwa = 45;
   for (const twa of TWA_B) {
@@ -71,7 +71,9 @@ function setupCanvasEvents(canvas) {
   canvas.dataset.eventsListener = 'true';
 
   const getPos = (e) => {
-    if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
     return { x: e.clientX, y: e.clientY };
   };
 
@@ -103,6 +105,7 @@ function setupCanvasEvents(canvas) {
   canvas.addEventListener('mousedown', startDrag);
   window.addEventListener('mousemove', doDrag);
   window.addEventListener('mouseup', endDrag);
+
   canvas.addEventListener('touchstart', startDrag, { passive: true });
   window.addEventListener('touchmove', doDrag, { passive: true });
   window.addEventListener('touchend', endDrag);
@@ -160,6 +163,7 @@ export function drawTacticalMap(S, CFG, polar) {
     ctx.setLineDash([]);
   }
 
+  // Renderizado e imprecisión blindada a 12 metros estrictos de eslora real
   ctx.save(); ctx.translate(cx, cy); ctx.rotate((S.cog * Math.PI) / 180);
   
   const esloraFijaMeters = 12;
