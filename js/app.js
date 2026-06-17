@@ -4,9 +4,10 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+// Importación explícita con prefijo relativo indispensable para el hosting de GitHub Pages
 import { calculateTactics, drawTacticalMap, initTouchLock } from "./tactico.js";
 
-// Configuración de la persistencia remota
 const firebaseConfig = {
   apiKey: "AIzaSyCH9QilfBI6lorKexzFASfF_wHqtrVLPHU",
   authDomain: "evolution-tamborilero.firebaseapp.com",
@@ -19,7 +20,6 @@ const firebaseConfig = {
 const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
-/* ── ESTADO DEL SISTEMA ── */
 const S = { bsp:0, tws:0, twa:0, awa:0, aws:0, cog:0, sog:0, lat:42.2345, lon:-8.7234, live:false };
 const CFG = { thresh:85, minSpeed:2.0, speedSource:'SOG', motorMode:false, eslora:12 };
 
@@ -57,7 +57,6 @@ function setFbStatus(text, cls='') {
   if(el) { el.textContent = text; el.className = cls; }
 }
 
-/* ── FIREBASE: OPERACIONES POLAR ── */
 let _polarSaveTimer = null;
 function schedulePolarSave() {
   clearTimeout(_polarSaveTimer);
@@ -69,30 +68,27 @@ async function flushPolarSave() {
     await setDoc(doc(db, "polar_data", "current_polar"), polar);
     setFbStatus("Nube: Guardado", "synced");
   } catch(e) {
-    console.error("Error guardando polar:", e);
-    setFbStatus("Nube: Error al guardar", "error");
+    console.error(e);
+    setFbStatus("Nube: Error", "error");
   }
 }
 
 async function loadPolarFirebase() {
   setFbStatus("Nube: Leyendo...");
-  const timeout = new Promise((_,reject) => setTimeout(() => reject(new Error("timeout")), 5000));
   try {
-    const snap = await Promise.race([ getDoc(doc(db, "polar_data", "current_polar")), timeout ]);
+    const snap = await getDoc(doc(db, "polar_data", "current_polar"));
     polar = snap.exists() ? snap.data() : {};
     setFbStatus("Nube: OK", "synced");
   } catch(e) {
-    console.warn("Firebase offline, modo local:", e);
     polar = {};
-    setFbStatus("Nube: Offline (local)", "synced");
+    setFbStatus("Nube: Local Only", "synced");
   }
   renderPolar();
   updateStats();
 }
 
-/* ── FIREBASE: HISTORIAL ── */
 async function saveHistoryEntry(entry) {
-  try { await addDoc(collection(db, "historial"), entry); } catch(e) { console.warn("No se pudo guardar historial:", e); }
+  try { await addDoc(collection(db, "historial"), entry); } catch(e) {}
 }
 
 async function loadHistoryFirebase() {
@@ -101,13 +97,12 @@ async function loadHistoryFirebase() {
     const snap = await getDocs(q); 
     history = snap.docs.map(d => d.data()); 
     renderHistory();
-  } catch(e) { console.warn("No se pudo cargar historial:", e); history = []; }
+  } catch(e) { history = []; }
 }
 
 function getTargetCeñidaAngle() {
   const currentTwsBucket = nearest(TWS_B, S.tws);
-  let bestVmg = 0;
-  let targetTwa = 45;
+  let bestVmg = 0; let targetTwa = 45;
   for (const twa of TWA_B) {
     if (twa > 90) continue;
     const k = `${currentTwsBucket}_${twa}`;
@@ -158,7 +153,8 @@ function renderPolar() {
     }
     h += '</tr>';
   }
-  document.getElementById('ptable').innerHTML = h + '</tbody>';
+  const target = document.getElementById('ptable');
+  if(target) target.innerHTML = h + '</tbody>';
 }
 
 function updatePolar() {
@@ -242,7 +238,7 @@ function recordHistory() {
 }
 
 function renderHistory() {
-  const tbody = document.getElementById('hist-body'); 
+  const tbody = document.getElementById('hist-body'); if(!tbody) return;
   if (!history.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;font-style:italic">Sin registros aún</td></tr>'; return; }
   tbody.innerHTML = history.map(h => {
     let pc = '', pt = '—'; if (h.perf !== null && h.perf !== undefined) { pt = h.perf.toFixed(0) + '%'; pc = h.perf >= CFG.thresh ? 'c-ph-good' : h.perf >= 70 ? 'c-ph-mid' : 'c-ph-bad'; }
@@ -253,11 +249,15 @@ function renderHistory() {
 function updateStats() {
   const total = Object.keys(polar).length; const maxCells = TWS_B.length * TWA_B.length;
   const sogCells = Object.values(polar).filter(r => r?.tipo === 'SOG').length; const bspCells = Object.values(polar).filter(r => r?.tipo === 'BSP').length;
-  document.getElementById('stat-total').textContent = total; document.getElementById('stat-bsp').textContent = bspCells; document.getElementById('stat-sog').textContent = sogCells;
-  document.getElementById('stat-hist').textContent = history.length; document.getElementById('stat-cover').textContent = Math.round((total/maxCells)*100) + '%';
+  
+  const elTotal = document.getElementById('stat-total'); if(!elTotal) return;
+  elTotal.textContent = total; 
+  document.getElementById('stat-bsp').textContent = bspCells; 
+  document.getElementById('stat-sog').textContent = sogCells;
+  document.getElementById('stat-hist').textContent = history.length; 
+  document.getElementById('stat-cover').textContent = Math.round((total/maxCells)*100) + '%';
 }
 
-/* ── PARSER NMEA INTEGRADO ── */
 function parseNMEA(line) {
   line = line.trim(); if (!line.startsWith('$')) return;
   const p = line.split(','); const t = p[0];
@@ -268,8 +268,7 @@ function parseNMEA(line) {
     if (r==='R' && !isNaN(a) && !isNaN(sp)) { S.awa=a; S.aws=sp; }
     if (r==='T' && !isNaN(a) && !isNaN(sp)) { S.twa = addWithDamping('twa', a); S.tws = addWithDamping('tws', sp); }
   } else if (t.endsWith('VTG')) {
-    const sg=parseFloat(p[7]), cg=parseFloat(p[8]);
-    if (!isNaN(sg)) S.sog=sg; if (!isNaN(cg)) S.cog=cg;
+    const sg=parseFloat(p[7]), cg=parseFloat(p[8]); if (!isNaN(sg)) S.sog=sg; if (!isNaN(cg)) S.cog=cg;
   } else if (t.endsWith('RMC')) {
     const sg=parseFloat(p[7]), cg=parseFloat(p[8]); if (!isNaN(sg)) S.sog=sg; if (!isNaN(cg)) S.cog=cg;
     if (p[2] === 'A') { 
@@ -282,10 +281,8 @@ function parseNMEA(line) {
 }
 
 function process() {
-  updatePolar();
-  updateDash();
-  calculateTactics(S, REGATA, activeSpeed);
-  updateStratPanel();
+  updatePolar(); updateDash();
+  calculateTactics(S, REGATA, activeSpeed); updateStratPanel();
   drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle);
   if (++histTick % 15 === 0) { recordHistory(); updateStats(); }
 }
@@ -306,8 +303,7 @@ function connect(host, port) {
 }
 
 function updateChronoDisplay() {
-  const m = Math.floor(Math.abs(REGATA.chrono) / 60);
-  const s = Math.floor(Math.abs(REGATA.chrono) % 60);
+  const m = Math.floor(Math.abs(REGATA.chrono) / 60); const s = Math.floor(Math.abs(REGATA.chrono) % 60);
   const sign = REGATA.chrono < 0 ? "-" : "";
   document.getElementById('chrono-val').textContent = `${sign}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
 }
@@ -317,23 +313,20 @@ function startChrono() {
   REGATA.chronoActive = true;
   document.getElementById('strat-sync-btn').classList.add('active-btn');
   chronoInterval = setInterval(() => {
-    REGATA.chrono--;
-    updateChronoDisplay();
-    calculateTactics(S, REGATA, activeSpeed);
-    updateStratPanel();
+    REGATA.chrono--; updateChronoDisplay();
+    calculateTactics(S, REGATA, activeSpeed); updateStratPanel();
     if (REGATA.chrono === 0) {
       try { const ac = new AudioContext(); const o = ac.createOscillator(); o.connect(ac.destination); o.start(); o.stop(0.4); } catch(e){}
     }
   }, 1000);
 }
 
-/* ── EVENTOS DE LA INTERFAZ USUARIO ── */
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     tab.classList.add('active'); document.getElementById('panel-' + tab.dataset.p).classList.add('active');
-    if (tab.dataset.p === 'strat')    setTimeout(() => drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle), 50);
+    if (tab.dataset.p === 'strat')    setTimeout(() => drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle), 60);
     if (tab.dataset.p === 'polar')    renderPolar();
     if (tab.dataset.p === 'history')  loadHistoryFirebase();
     if (tab.dataset.p === 'settings') updateStats();
@@ -341,8 +334,7 @@ document.querySelectorAll('.tab').forEach(tab => {
 });
 
 document.getElementById('strat-sync-btn').addEventListener('click', () => {
-  REGATA.chrono = Math.round(REGATA.chrono / 60) * 60;
-  updateChronoDisplay();
+  REGATA.chrono = Math.round(REGATA.chrono / 60) * 60; updateChronoDisplay();
   if(!REGATA.chronoActive) startChrono();
 });
 
@@ -352,19 +344,13 @@ document.getElementById('strat-reset-btn').addEventListener('click', () => {
   document.getElementById('strat-sync-btn').classList.remove('active-btn');
 });
 
-document.getElementById('btn-mark-comite').addEventListener('click', () => {
-  REGATA.comite = { lat: S.lat, lon: S.lon }; calculateTactics(S, REGATA, activeSpeed); drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle);
-});
-document.getElementById('btn-mark-pin').addEventListener('click', () => {
-  REGATA.pin = { lat: S.lat, lon: S.lon }; calculateTactics(S, REGATA, activeSpeed); drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle);
-});
-document.getElementById('btn-mark-barlo').addEventListener('click', () => {
-  REGATA.barlovento = { lat: S.lat, lon: S.lon }; calculateTactics(S, REGATA, activeSpeed); drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle);
-});
+document.getElementById('btn-mark-comite').addEventListener('click', () => { REGATA.comite = { lat: S.lat, lon: S.lon }; calculateTactics(S, REGATA, activeSpeed); drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle); });
+document.getElementById('btn-mark-pin').addEventListener('click', () => { REGATA.pin = { lat: S.lat, lon: S.lon }; calculateTactics(S, REGATA, activeSpeed); drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle); });
+document.getElementById('btn-mark-barlo').addEventListener('click', () => { REGATA.barlovento = { lat: S.lat, lon: S.lon }; calculateTactics(S, REGATA, activeSpeed); drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle); });
 
 document.getElementById('motor-btn').addEventListener('click', function() {
   CFG.motorMode = !CFG.motorMode;
-  if (CFG.motorMode) { this.classList.add('active'); this.innerHTML = 'Motor ON'; setFbStatus('Nube: Pausado (motor)'); } 
+  if (CFG.motorMode) { this.classList.add('active'); this.innerHTML = 'Motor ON'; setFbStatus('Nube: Pausado'); } 
   else { this.classList.remove('active'); this.innerHTML = 'Motor'; setFbStatus('Nube: OK', 'synced'); }
   updateDash();
 });
@@ -387,11 +373,9 @@ document.getElementById('cfg-thresh').addEventListener('input', function() { CFG
 document.getElementById('cfg-source').addEventListener('change', function() { CFG.speedSource = this.value; });
 document.getElementById('cfg-minspeed').addEventListener('change', function() { CFG.minSpeed = +this.value; });
 
-// Los listeners de mantenimiento permanecen totalmente funcionales con las variables locales
 document.getElementById('clear-cell-btn').addEventListener('click', () => {
-  const k = pKey(S.tws, S.twa); if (!polar[k]?.valor) { alert('La celda actual está vacía.'); return; }
-  const label = `${nearest(TWS_B, S.tws)} kn / ${nearest(TWA_B, S.twa)}°`;
-  if (confirm(`¿Borrar registro de la celda actual (${label})?`)) { delete polar[k]; schedulePolarSave(); renderPolar(); updateDash(); updateStats(); }
+  const k = pKey(S.tws, S.twa); if (!polar[k]?.valor) return;
+  if (confirm(`¿Borrar celda actual?`)) { delete polar[k]; schedulePolarSave(); renderPolar(); updateDash(); updateStats(); }
 });
 
 document.getElementById('clear-polar-btn').addEventListener('click', async () => {
@@ -399,7 +383,7 @@ document.getElementById('clear-polar-btn').addEventListener('click', async () =>
 });
 
 document.getElementById('purge-sog-btn').addEventListener('click', async () => {
-  const sogKeys = Object.keys(polar).filter(k => polar[k]?.tipo === 'SOG'); if (!sogKeys.length) { alert('No hay celdas SOG.'); return; }
+  const sogKeys = Object.keys(polar).filter(k => polar[k]?.tipo === 'SOG'); if (!sogKeys.length) return;
   if (!confirm(`¿Purgar ${sogKeys.length} celdas SOG?`)) return; sogKeys.forEach(k => delete polar[k]); await flushPolarSave(); renderPolar(); updateDash(); updateStats();
 });
 
@@ -407,8 +391,9 @@ window.addEventListener('resize', () => {
   if(document.getElementById('panel-strat').classList.contains('active')) drawTacticalMap(S, REGATA, CFG, getTargetCeñidaAngle); 
 });
 
-/* ── INICIALIZACIÓN AUTOMÁTICA EN IPAD ── */
+// Inicialización de intercepciones táctiles
 initTouchLock();
+
 const savedHost = localStorage.getItem('nmea_host'); const savedPort = localStorage.getItem('nmea_port');
 if (savedHost && savedPort) { document.getElementById('m-host').value = savedHost; document.getElementById('m-port').value = savedPort; setTimeout(() => connect(savedHost, savedPort), 800); }
 if (localStorage.getItem('night_mode') === 'true') { document.body.classList.add('night-mode'); document.getElementById('night-btn').innerHTML = "Dia"; }
