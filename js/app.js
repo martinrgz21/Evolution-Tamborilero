@@ -2,7 +2,7 @@ import { drawTacticalMap, calculateTactics, REGATA, CONFIG_MAPA } from './tactic
 
 const S = { sog: 0, cog: 0, tws: 0, twa: 0, hdg: 0, bsp: 0, lat: 42.2345, lon: -8.7234 };
 const CFG = { ip: '127.0.0.1', port: '8080', speedSource: 'SOG', eslora: 12 };
-let polarData = null; // Inicializado en null para detectar si cargó o no
+let polarData = null;
 let ws = null;
 let historyLog = [];
 let lastLogTime = 0;
@@ -20,11 +20,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 async function loadPolar() {
   try {
     const r = await fetch('data/polar.json');
-    if (!r.ok) throw new Error("No se encuentra polar.json");
+    if (!r.ok) throw new Error();
     polarData = await r.json();
     buildPolarTable();
   } catch (e) {
-    console.warn("Aviso: No se pudo cargar data/polar.json. El rendimiento se calculará en 0%, pero el mapa e historial seguirán funcionando.");
+    console.warn("Aviso: Sin data/polar.json. Rendimiento al 0%, el resto sigue funcionando.");
     polarData = {}; 
   }
 }
@@ -91,7 +91,6 @@ function updateUI() {
   document.getElementById('val-hdg').textContent = S.hdg.toFixed(0);
   document.getElementById('val-bsp').textContent = S.bsp.toFixed(1);
 
-  // 1. Calcular Rendimiento de forma segura sin bloquear el hilo
   let perf = 0;
   const speedAct = CFG.speedSource === 'SOG' ? S.sog : S.bsp;
   
@@ -111,7 +110,6 @@ function updateUI() {
     const fill = document.getElementById('perf-fill');
     if (fill) fill.style.width = `${Math.min(perf, 120)}%`;
 
-    // 2. Tácticas y renderizado del mapa (Ahora se ejecutan pase lo que pase)
     calculateTactics(S, speedAct);
     drawTacticalMap(S, CFG, polarData);
 
@@ -119,7 +117,6 @@ function updateUI() {
     document.getElementById('strat-ttl').textContent = REGATA.ttl ? `${Math.floor(REGATA.ttl/60)}m ${Math.floor(REGATA.ttl%60)}s` : '—';
     document.getElementById('strat-action').textContent = REGATA.action;
 
-    // 3. Guardado en Historial independizado
     logHistory(perf);
   });
 }
@@ -174,7 +171,6 @@ function init() {
   document.getElementById('btn-set-comite')?.addEventListener('click', () => { REGATA.comite = { lat: S.lat, lon: S.lon }; });
   document.getElementById('btn-set-barlovento')?.addEventListener('click', () => { REGATA.barlovento = { lat: S.lat, lon: S.lon }; });
 
-  // Evento del botón de Autocentrado
   const autocenterBtn = document.getElementById('btn-autocenter');
   if (autocenterBtn) {
     autocenterBtn.addEventListener('click', () => {
@@ -193,11 +189,10 @@ function init() {
     });
   }
 
-  // ACCIONES DE LOS NUEVOS BOTONES DE BORRADO
   document.getElementById('btn-clear-history')?.addEventListener('click', () => {
     historyLog = [];
     renderHistoryTable();
-    alert('Historial borrado correctamente.');
+    alert('Historial borrado.');
   });
 
   document.getElementById('btn-clear-marks')?.addEventListener('click', () => {
@@ -207,7 +202,7 @@ function init() {
     REGATA.distLine = null;
     REGATA.ttl = null;
     REGATA.action = '—';
-    alert('Marcas de boyas eliminadas.');
+    alert('Marcas eliminadas.');
   });
 }
 
