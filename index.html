@@ -2,156 +2,99 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Evolution Tamborilero</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Anemómetro & Polares Avanzadas</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="app">
   <header>
-    <div class="wordmark">Evolution Tamborilero <span class="version">/ v4.0</span></div>
-    <div class="header-right">
-      <button id="night-btn">Modo Noche</button>
-      <button id="motor-btn">Modo Motor</button>
-      <span id="fb-signal">Nube: Conectando...</span>
-      <div id="signal"><div id="signal-pip"></div><span id="signal-label">sin señal</span></div>
-      <button id="conn-btn">Configurar Red</button>
+    <div class="header-main">
+      <h1>SISTEMA DE NAVEGACIÓN</h1>
+      <div id="net-status" class="status-indicator"></div>
     </div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="instrumentos">INSTRUMENTOS</button>
+      <button class="tab-btn" data-tab="estrategia">ESTRATEGIA</button>
+      <button class="tab-btn" data-tab="polar-tab">POLAR</button>
+      <button class="tab-btn" data-tab="historial-tab">HISTORIAL</button>
+      <button class="tab-btn" data-tab="config">AJUSTES</button>
+    </nav>
   </header>
 
-  <nav>
-    <div class="tab active" data-p="dash">Instrumentos</div>
-    <div class="tab" data-p="strat">Estrategia</div>
-    <div class="tab" data-p="polar">Polar</div>
-    <div class="tab" data-p="history">Historial</div>
-    <div class="tab" data-p="settings">Ajustes</div>
-  </nav>
+  <main class="tab-content">
+    <section id="tab-instrumentos" class="panel active">
+      <div class="grid-inst">
+        <div class="card bg-highlight"><span class="label">SOG</span><span id="val-sog" class="value">—</span><span class="unit">kn</span></div>
+        <div class="card bg-highlight"><span class="label">COG</span><span id="val-cog" class="value">—</span><span class="unit">°</span></div>
+        <div class="card"><span class="label">TWS</span><span id="val-tws" class="value">—</span><span class="unit">kn</span></div>
+        <div class="card"><span class="label">TWA</span><span id="val-twa" class="value">—</span><span class="unit">°</span></div>
+        <div class="card"><span class="label">HDG</span><span id="val-hdg" class="value">—</span><span class="unit">°</span></div>
+        <div class="card"><span class="label">BSP</span><span id="val-bsp" class="value">—</span><span class="unit">kn</span></div>
+      </div>
+      <div class="perf-bar-container">
+        <div class="perf-labels"><span>RENDIMIENTO POLAR</span><span id="val-perf">—</span></div>
+        <div class="perf-track"><div id="perf-fill" class="perf-fill"></div></div>
+      </div>
+    </section>
 
-  <div id="content">
-    <div class="panel active" id="panel-dash">
-      <div class="row-top">
-        <div class="hero-cell">
-          <span class="cell-label">VMG Actual</span>
-          <div class="value-xl" id="v-vmg">—<span class="unit">kn</span></div>
+    <section id="tab-estrategia" class="panel">
+      <div class="strat-layout">
+        <div id="panel-strat" class="strat-map-box" style="position: relative;">
+          <canvas id="strat-canvas"></canvas>
+          <button id="btn-autocenter" style="position: absolute; top: 16px; right: 16px; background: var(--surface); color: var(--navy); border: 1px solid var(--navy); padding: 8px 14px; font-family: var(--sans); font-size: 0.75rem; font-weight: 600; border-radius: 4px; cursor: pointer; z-index: 10; transition: all 0.2s ease;">
+            Autocentrado: ON
+          </button>
         </div>
-        <div class="hero-cell">
-          <span class="cell-label">Rendimiento vs Polar</span>
-          <div class="perf-number" id="v-perf">—</div>
-          <div class="perf-bar-track"><div class="perf-bar-fill" id="perf-fill"></div></div>
-          <div class="perf-caption" id="perf-cap">Calculando...</div>
-        </div>
-      </div>
-      <div class="row-targets">
-        <div class="instr-cell"><span class="cell-label" style="color:var(--navy)">Beat VMG</span><div class="value-lg" id="v-beat-vmg" style="color:var(--navy)">—</div></div>
-        <div class="instr-cell"><span class="cell-label" style="color:var(--navy)">Beat Angle</span><div class="value-lg" id="v-beat-angle" style="color:var(--navy)">—</div></div>
-        <div class="instr-cell"><span class="cell-label" style="color:var(--bronze)">Run VMG</span><div class="value-lg" id="v-run-vmg" style="color:var(--bronze)">—</div></div>
-        <div class="instr-cell"><span class="cell-label" style="color:var(--bronze)">Gybe Angle</span><div class="value-lg" id="v-gybe-angle" style="color:var(--bronze)">—</div></div>
-      </div>
-      <div class="row-mid">
-        <div class="instr-cell"><span class="cell-label">Velocidad Barco (BSP)</span><div class="value-lg" id="v-bsp">—<span class="unit">kn</span></div></div>
-        <div class="instr-cell"><span class="cell-label">TWS (Intensidad Viento)</span><div class="value-lg" id="v-tws">—<span class="unit">kn</span></div></div>
-        <div class="instr-cell"><span class="cell-label">TWA (Ángulo Viento Real)</span><div class="value-lg" id="v-twa">—<span class="unit">°</span></div></div>
-        <div class="instr-cell"><span class="cell-label">AWA (Ángulo Aparente)</span><div class="value-lg" id="v-awa">—<span class="unit">°</span></div></div>
-      </div>
-      <div class="row-bot">
-        <div class="instr-cell"><span class="cell-label">AWS</span><div class="value-lg" id="v-aws">—<span class="unit">kn</span></div></div>
-        <div class="instr-cell"><span class="cell-label">SOG (GPS)</span><div class="value-lg" id="v-sog">—<span class="unit">kn</span></div></div>
-        <div class="instr-cell"><span class="cell-label">COG (Rumbo Fondo)</span><div class="value-lg" id="v-cog">—<span class="unit">°</span></div></div>
-        <div class="instr-cell"><span class="cell-label">Récord en Celda</span><div class="value-lg" id="v-best">—</div></div>
-      </div>
-      <div class="vmg-banner">
-        <div class="vmg-banner-cell"><span class="cell-label">Celda Polar Actual</span><div class="value-md" id="v-cell">—</div></div>
-        <div class="vmg-banner-cell"><span class="cell-label">Estado de Trimado</span><div class="advice-text" id="v-advice">Esperando NMEA...</div></div>
-      </div>
-    </div>
-
-    <div class="panel" id="panel-strat">
-      <div class="strat-sidebar">
-        <div class="chrono-container">
-          <span class="cell-label">Regata Cuenta Atrás</span>
-          <div class="chrono-display" id="chrono-val">05:00</div>
-          <div class="chrono-controls">
-            <button class="strat-btn primary" id="strat-sync-btn">SYNC</button>
-            <button class="strat-btn danger" id="strat-reset-btn">RESET</button>
+        <div class="strat-sidebar">
+          <div class="chrono-box">
+            <span id="chrono-display" class="chrono-time">05:00</span>
+            <div class="chrono-controls">
+              <button id="btn-start-chrono">START</button>
+              <button id="btn-sync-chrono">SYNC</button>
+            </div>
+          </div>
+          <div class="marks-box">
+            <button id="btn-set-pin" class="btn-mark btn-pin">SET PIN</button>
+            <button id="btn-set-comite" class="btn-mark btn-comite">SET COMITÉ</button>
+            <button id="btn-set-barlovento" class="btn-mark btn-barlo">SET BARLOVENTO</button>
+          </div>
+          <div class="strat-data">
+            <div class="data-row"><span class="lbl">DIST. LÍNEA</span><span id="strat-dist" class="val">—</span></div>
+            <div class="data-row"><span class="lbl">TIEMPO LÍNEA</span><span id="strat-ttl" class="val">—</span></div>
+            <div class="data-row"><span class="lbl">ACCIÓN RECOM.</span><span id="strat-action" class="val">—</span></div>
           </div>
         </div>
-        <div class="strat-metrics">
-          <span class="cell-label" style="margin-bottom: 10px; display:block;">Análisis de Salida</span>
-          <div class="strat-metric-row"><span class="strat-metric-lbl">Dist. a la Línea:</span><span class="strat-metric-val" id="s-dist-line">—</span></div>
-          <div class="strat-metric-row"><span class="strat-metric-lbl">Tiempo a la Línea (TTL):</span><span class="strat-metric-val" id="s-ttl">—</span></div>
-          <div class="strat-metric-row" style="flex-direction: column; align-items: flex-start; gap: 4px; border-bottom:none; margin-top:10px;">
-            <span class="strat-metric-lbl">Acción Requerida:</span>
-            <span class="strat-metric-val" id="s-action">—</span>
+      </div>
+    </section>
+
+    <section id="tab-polar-tab" class="panel">
+      <div class="polar-table-wrapper">
+        <table id="table-polar"><thead><tr id="polar-headers"></tr></thead><tbody id="polar-body"></tbody></table>
+      </div>
+    </section>
+
+    <section id="tab-historial-tab" class="panel">
+      <div class="history-table-wrapper">
+        <table><thead><tr><th>HORA</th><th>SOG</th><th>COG</th><th>TWS</th><th>TWA</th><th>PERF</th></tr></thead><tbody id="history-body"></tbody></table>
+      </div>
+    </section>
+
+    <section id="tab-config" class="panel">
+      <div class="config-grid">
+        <div class="config-card">
+          <h3>CONEXIÓN DE RED</h3>
+          <div class="form-group"><label>IP Servidor</label><input type="text" id="cfg-ip" value="192.168.0.1"></div>
+          <div class="form-group"><label>Puerto</label><input type="number" id="cfg-port" value="10110"></div>
+          <button id="btn-save-net">CONECTAR SISTEMA</button>
+        </div>
+        <div class="config-card">
+          <h3>FUENTE DE VELOCIDAD</h3>
+          <div class="form-group">
+            <select id="cfg-speed-source"><option value="SOG">SOG (GPS)</option><option value="BSP">BSP (Corredera)</option></select>
           </div>
         </div>
-        <div class="mark-buttons">
-          <span class="cell-label">Configuración del Campo</span>
-          <button class="strat-btn" id="btn-mark-comite">Marcar Comité</button>
-          <button class="strat-btn" id="btn-mark-pin">Marcar Pin</button>
-          <button class="strat-btn" id="btn-mark-barlo">Marcar Barlovento</button>
-        </div>
       </div>
-      <div class="strat-map-container"><canvas id="strat-canvas"></canvas></div>
-    </div>
-
-    <div class="panel" id="panel-polar">
-      <div class="polar-head"><div><span class="polar-title">Tabla Polar Dinámica</span><span class="polar-subtitle">Valores en Nudos</span></div></div>
-      <div class="polar-wrap"><table class="ptable" id="ptable"></table></div>
-    </div>
-
-    <div class="panel" id="panel-history">
-      <table class="hist-table">
-        <thead><tr><th>Hora</th><th>TWS</th><th>TWA</th><th>Velocidad</th><th>VMG</th><th>Perf</th><th>Origen</th></tr></thead>
-        <tbody id="hist-body"></tbody>
-      </table>
-    </div>
-
-    <div class="panel" id="panel-settings">
-      <div class="cfg-section">
-        <div class="cfg-title">Configuración de Entrada</div>
-        <div class="cfg-row">
-          <label>Fuente Activa:<small>BSP prioriza el agua; SOG calcula sobre fondo.</small></label>
-          <select id="cfg-source" style="border:1px solid var(--navy); font-weight:500;">
-            <option value="BSP">BSP (Corredera)</option>
-            <option value="SOG" selected>SOG (GPS)</option>
-          </select>
-        </div>
-        <div class="cfg-row"><label>Velocidad mínima (kn)</label><input type="number" id="cfg-minspeed" min="0.5" max="5.0" step="0.5" value="2.0"></div>
-        <div class="cfg-row"><label>Umbral Rendimiento</label><div style="display:flex; align-items:center; gap:8px;"><input type="range" id="cfg-thresh" min="50" max="99" value="85"><span class="cfg-val" id="thresh-v">85%</span></div></div>
-      </div>
-      <div class="cfg-section">
-        <div class="cfg-title">Estadísticas</div>
-        <div class="cfg-stats">
-          <div class="stat-box"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Celdas</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-bsp">0</div><div class="stat-lbl">Regs BSP</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-sog">0</div><div class="stat-lbl">Regs SOG</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-hist">0</div><div class="stat-lbl">Historial</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-cover">0%</div><div class="stat-lbl">Cobertura</div></div>
-        </div>
-      </div>
-      <div class="cfg-section">
-        <div class="cfg-title" style="color:var(--danger)">Mantenimiento</div>
-        <div class="cfg-row"><label>Limpiar Celda Actual</label><button class="danger-btn" id="clear-cell-btn">Borrar Celda</button></div>
-        <div class="cfg-row"><label>Purgar SOG</label><button class="danger-btn" id="purge-sog-btn">Purgar SOG</button></div>
-        <div class="cfg-row"><label>Reiniciar Tabla</label><button class="danger-btn" id="clear-polar-btn">Borrar Todo</button></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="overlay" style="display:none;">
-  <div id="modal">
-    <h2>Conexión Local de Abordo</h2>
-    <p>Introduce la IP y el puerto de tu servidor NMEA 0183.</p>
-    <label class="m-label">IP del Servidor</label><input class="m-input" id="m-host" type="text" value="192.168.0.1">
-    <label class="m-label">Puerto WS</label><input class="m-input" id="m-port" type="text" value="10110">
-    <button class="m-btn primary" id="m-conn">Conectar</button>
-    <button class="m-btn ghost" id="m-cancel">Cancelar</button>
-  </div>
-</div>
-
-<script type="module" src="js/app.js"></script>
+    </section>
+  </main>
 </body>
 </html>

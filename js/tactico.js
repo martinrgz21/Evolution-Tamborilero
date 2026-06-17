@@ -12,6 +12,14 @@ export const pKey = (tws,twa) => `${nearest(TWS_B,tws)}_${nearest(TWA_B,twa)}`;
 export const vmg = (speed,twa) => speed * Math.cos(twa * Math.PI/180);
 export const fmt = (v,d=1) => (typeof v==='number'&&!isNaN(v)) ? v.toFixed(d) : '—';
 
+// Configuración global de la vista del lienzo táctico
+export let CONFIG_MAPA = { autocenter: true };
+let offsetX = 0;
+let offsetY = 0;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
+
 function getMetersFromLatLon(targetLat, targetLon, baseLat, baseLon) {
   const R = 6378137;
   const dLat = (targetLat - baseLat) * Math.PI / 180;
@@ -58,17 +66,72 @@ export function calculateTactics(S, speedAct) {
   }
 }
 
+function setupCanvasEvents(canvas) {
+  if (canvas.dataset.eventsListener === 'true') return;
+  canvas.dataset.eventsListener = 'true';
+
+  const getPos = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  };
+
+  const startDrag = (e) => {
+    if (CONFIG_MAPA.autocenter) {
+      CONFIG_MAPA.autocenter = false;
+      const btn = document.getElementById('btn-autocenter');
+      if (btn) {
+        btn.textContent = "Autocentrado: OFF";
+        btn.style.background = "transparent";
+        btn.style.color = "var(--ink-2)";
+      }
+    }
+    isDragging = true;
+    const pos = getPos(e);
+    startX = pos.x - offsetX;
+    startY = pos.y - offsetY;
+  };
+
+  const doDrag = (e) => {
+    if (!isDragging) return;
+    const pos = getPos(e);
+    offsetX = pos.x - startX;
+    offsetY = pos.y - startY;
+  };
+
+  const endDrag = () => { isDragging = false; };
+
+  canvas.addEventListener('mousedown', startDrag);
+  window.addEventListener('mousemove', doDrag);
+  window.addEventListener('mouseup', endDrag);
+
+  canvas.addEventListener('touchstart', startDrag, { passive: true });
+  window.addEventListener('touchmove', doDrag, { passive: true });
+  window.addEventListener('touchend', endDrag);
+}
+
 export function drawTacticalMap(S, CFG, polar) {
   const canvas = document.getElementById('strat-canvas');
   if (!canvas) return;
+  
+  setupCanvasEvents(canvas);
+
   const ctx = canvas.getContext('2d');
   const rect = canvas.getBoundingClientRect();
   canvas.width = rect.width * window.devicePixelRatio; canvas.height = rect.height * window.devicePixelRatio;
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-  const cx = rect.width / 2, cy = rect.height / 2 + 50;
+  if (CONFIG_MAPA.autocenter) {
+    offsetX = 0;
+    offsetY = 0;
+  }
+
+  const cx = (rect.width / 2) + offsetX;
+  const cy = (rect.height / 2 + 50) + offsetY;
+
   let maxDist = 150; if (REGATA.distLine && REGATA.distLine > maxDist) maxDist = REGATA.distLine * 1.2;
-  const scale = (rect.height * 0.6) / maxDist;
+  const scale = (rect.height * 0.6) / maxDist; 
 
   ctx.clearRect(0, 0, rect.width, rect.height);
   const ruleColor = getComputedStyle(document.body).getPropertyValue('--rule');
@@ -100,9 +163,13 @@ export function drawTacticalMap(S, CFG, polar) {
     ctx.setLineDash([]);
   }
 
-  // Renderizado del barco en color azul marino (--navy) dinámico según modo
+  // Renderizado e imprecisión blindada a 12 metros estrictos de eslora real
   ctx.save(); ctx.translate(cx, cy); ctx.rotate((S.cog * Math.PI) / 180);
-  const lPx = CFG.eslora * scale, mPx = lPx * 0.32;
+  
+  const esloraFijaMeters = 12;
+  const lPx = esloraFijaMeters * scale; 
+  const mPx = lPx * 0.32; 
+  
   ctx.fillStyle = navyColor; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--surface'); ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(0, -lPx/2); ctx.quadraticCurveTo(mPx/2, -lPx/6, mPx/2, lPx/2); ctx.lineTo(-mPx/2, lPx/2); ctx.quadraticCurveTo(-mPx/2, -lPx/6, 0, -lPx/2);
   ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();

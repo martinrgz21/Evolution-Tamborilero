@@ -1,224 +1,191 @@
-import { loadPolarFirebase, loadHistoryFirebase, schedulePolarSave, saveHistoryEntry, setFbStatus } from './firebase.js';
-import { REGATA, TWS_B, TWA_B, nearest, pKey, vmg, fmt, calculateTactics, drawTacticalMap } from './tactico.js';
+import { drawTacticalMap, calculateTactics, REGATA, CONFIG_MAPA } from './tactico.js';
 
-const S = { bsp:0, tws:0, twa:0, awa:0, aws:0, cog:0, sog:0, lat:42.2345, lon:-8.7234, live:false };
-const CFG = { thresh:85, minSpeed:2.0, speedSource:'SOG', motorMode:false, eslora:12 };
-
-let polar = {};
-let history = [];
+const S = { sog: 0, cog: 0, tws: 0, twa: 0, hdg: 0, bsp: 0, lat: 42.0, lon: -8.0 };
+const CFG = { ip: '192.168.0.1', port: '10110', speedSource: 'SOG', eslora: 12 };
+let polarData = {};
 let ws = null;
-let chronoInterval = null;
-let histTick = 0;
+let historyLog = [];
+let lastLogTime = 0;
 
-const buffers = { bsp:[], tws:[], twa:[] };
-function addWithDamping(type, value) {
-  buffers[type].push(value);
-  if (buffers[type].length > 6) buffers[type].shift();
-  return buffers[type].reduce((a,b)=>a+b, 0) / buffers[type].length;
-}
+// Navegación entre pestañas de la interfaz
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const target = document.getElementById(`tab-${btn.dataset.tab}`);
+    if (target) target.classList.add('active');
+  });
+});
 
-const activeSpeed = () => CFG.speedSource === 'BSP' ? S.bsp : S.sog;
-const calcPerf = () => {
-  if (CFG.motorMode) return null;
-  const k = pKey(S.tws, S.twa);
-  return (polar[k]?.valor > 0) ? Math.min(100, (activeSpeed() / polar[k].valor) * 100) : null;
-};
-
-function parseNMEA(line) {
-  line = line.trim(); if (!line.startsWith('$')) return;
-  const p = line.split(','); const t = p[0];
-  if (t.endsWith('VHW')) {
-    const v = parseFloat(p[5]); if (!isNaN(v)) S.bsp = addWithDamping('bsp', v);
-  } else if (t.endsWith('MWV')) {
-    const a = parseFloat(p[1]), r = p[2], sp = parseFloat(p[3]);
-    if (r==='R' && !isNaN(a) && !isNaN(sp)) { S.awa=a; S.aws=sp; }
-    if (r==='T' && !isNaN(a) && !isNaN(sp)) { S.twa = addWithDamping('twa', a); S.tws = addWithDamping('tws', sp); }
-  } else if (t.endsWith('VTG')) {
-    const sg=parseFloat(p[7]), cg=parseFloat(p[8]);
-    if (!isNaN(sg)) S.sog=sg; if (!isNaN(cg)) S.cog=cg;
-  } else if (t.endsWith('RMC')) {
-    const sg=parseFloat(p[7]), cg=parseFloat(p[8]); if (!isNaN(sg)) S.sog=sg; if (!isNaN(cg)) S.cog=cg;
-    if (p[2] === 'A') { 
-      let latDeg = parseFloat(p[3].slice(0,2)), latMin = parseFloat(p[3].slice(2));
-      let l = latDeg + (latMin/60); if (p[4] === 'S') l = -l; S.lat = l;
-      let lonDeg = parseFloat(p[5].slice(0,3)), lonMin = parseFloat(p[5].slice(3));
-      let o = lonDeg + (lonMin/60); if (p[6] === 'W') o = -o; S.lon = o;
-    }
+async function loadPolar() {
+  try {
+    const r = await fetch('data/polar.json');
+    polarData = await r.json();
+    buildPolarTable();
+  } catch (e) {
+    console.error("Error cargando el archivo de polares", e);
   }
 }
 
-function getVmgTargets() {
-  let beatVmg = 0, beatAngle = null, runVmg = 0, gybeAngle = null;
-  const currentTwsBucket = nearest(TWS_B, S.tws);
-  for (const twa of TWA_B) {
-    const k = `${currentTwsBucket}_${twa}`; const record = polar[k]; if (!record || !record.valor) continue;
-    const v = vmg(record.valor, twa);
-    if (twa <= 90) { if (v > beatVmg) { beatVmg = v; beatAngle = twa; } } 
-    else { if (Math.abs(v) > runVmg) { runVmg = Math.abs(v); gybeAngle = twa; } }
-  }
-  return { beatVmg: beatVmg > 0 ? beatVmg : null, beatAngle: beatAngle !== null ? beatAngle + "°" : "—", runVmg: runVmg > 0 ? runVmg : null, gybeAngle: gybeAngle !== null ? gybeAngle + "°" : "—" };
+function buildPolarTable() {
+  const headers = document.getElementById('polar-headers');
+  const body = document.getElementById('polar-body');
+  if (!headers || !body) return;
+
+  import('./tactico.js').then(m => {
+    headers.innerHTML = '<th>TWA \\ TWS</th>' + m.TWS_B.map(s => `<th>${s}kn</th>`).join('');
+    body.innerHTML = m.TWA_B.map(a => {
+      return `<tr><td><strong>${a}°</strong></td>` + m.TWS_B.map(s => `<td id="p_${s}-${a}">—</td>`).join('') + `</tr>`;
+    }).join('');
+  });
 }
 
-function updateDash() {
-  const speed = activeSpeed(); const perf = calcPerf(); const targets = getVmgTargets(); const k = pKey(S.tws, S.twa);
-  
-  document.getElementById('v-vmg').innerHTML = fmt(vmg(speed, S.twa)) + '<span class="unit">kn</span>';
-  document.getElementById('v-bsp').innerHTML = fmt(S.bsp) + '<span class="unit">kn</span>';
-  document.getElementById('v-tws').innerHTML = fmt(S.tws) + '<span class="unit">kn</span>';
-  document.getElementById('v-twa').innerHTML = fmt(S.twa, 0) + '<span class="unit">°</span>';
-  document.getElementById('v-sog').innerHTML = fmt(S.sog) + '<span class="unit">kn</span>';
-  document.getElementById('v-cog').innerHTML = fmt(S.cog, 0) + '<span class="unit">°</span>';
-  document.getElementById('v-awa').innerHTML = fmt(S.awa, 0) + '<span class="unit">°</span>';
-  document.getElementById('v-aws').innerHTML = fmt(S.aws) + '<span class="unit">kn</span>';
-  
-  document.getElementById('v-beat-vmg').innerHTML = targets.beatVmg ? fmt(targets.beatVmg) + '<span class="unit">kn</span>' : '—';
-  document.getElementById('v-beat-angle').textContent = targets.beatAngle;
-  document.getElementById('v-run-vmg').innerHTML = targets.runVmg ? fmt(targets.runVmg) + '<span class="unit">kn</span>' : '—';
-  document.getElementById('v-gybe-angle').textContent = targets.gybeAngle;
-  document.getElementById('v-best').textContent = polar[k]?.valor ? fmt(polar[k].valor) + ' kn' : '—';
-  document.getElementById('v-cell').textContent = S.live ? k.replace('_', ' kn / ') + '°' : '—';
-
-  const pEl = document.getElementById('v-perf'); const pFill = document.getElementById('perf-fill');
-  const advEl = document.getElementById('v-advice');
-
-  if (CFG.motorMode) {
-    pEl.textContent = 'MOTOR'; pFill.style.width = '0%'; pEl.className = 'perf-number';
-    pFill.className = 'perf-bar-fill';
-    advEl.textContent = "Propulsión mecánica activa"; advEl.className = "advice-text";
-    return;
-  }
-
-  if (perf !== null) {
-    pEl.textContent = fmt(perf, 0) + '%'; pFill.style.width = perf + '%';
-    const st = perf >= CFG.thresh ? 'good' : perf >= 70 ? 'mid' : 'bad';
-    pEl.className = `perf-number st-${st}`; pFill.className = `perf-bar-fill st-${st}`;
-    
-    if(st === 'good') { advEl.textContent = "Buen trimado. Manteniendo objetivo."; advEl.className = "advice-text st-good"; }
-    else if(st === 'mid') { advEl.textContent = "Rendimiento mejorable. Revisa escotas."; advEl.className = "advice-text st-mid"; }
-    else { advEl.textContent = "Bajo rendimiento. Angulo o trimado incorrecto."; advEl.className = "advice-text st-bad"; }
-  } else {
-    pEl.textContent = '—'; pFill.style.width = '0%'; pEl.className = 'perf-number';
-    advEl.textContent = S.live ? "Faltan registros en esta celda polar" : "Esperando datos NMEA...";
-    advEl.className = "advice-text";
-  }
-}
-
-function updateStratPanel() {
-  document.getElementById('s-dist-line').textContent = REGATA.distLine !== null ? fmt(REGATA.distLine, 0) + ' m' : '—';
-  if (REGATA.ttl !== null) {
-    const m = Math.floor(REGATA.ttl / 60); const s = Math.floor(REGATA.ttl % 60);
-    document.getElementById('s-ttl').textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-  } else { document.getElementById('s-ttl').textContent = '—'; }
-  const actEl = document.getElementById('s-action'); actEl.textContent = REGATA.action;
-  actEl.className = 'strat-metric-val ' + (REGATA.action === 'GANAR TIEMPO' ? 'action-ganar' : REGATA.action === 'AHORRAR TIEMPO' ? 'action-ahorrar' : '');
-}
-
-function updateChronoDisplay() {
-  const m = Math.floor(Math.abs(REGATA.chrono) / 60); const s = Math.floor(Math.abs(REGATA.chrono) % 60);
-  document.getElementById('chrono-val').textContent = `${REGATA.chrono < 0 ? "-" : ""}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-}
-
-function updatePolarTable() {
-  const curKey = pKey(S.tws, S.twa); let h = '<thead><tr><th>TWA / TWS</th>';
-  for (const tw of TWS_B) h += `<th>${tw} kn</th>`;
-  h += '</tr></thead><tbody>';
-  for (const twa of TWA_B) {
-    h += `<tr><th>${twa}°</th>`;
-    for (const tws of TWS_B) {
-      const k = `${tws}_${twa}`; const isCur = (k === curKey && S.live && !CFG.motorMode);
-      h += `<td class="${isCur ? 'c-cur' : polar[k]?.valor ? 'c-record' : 'c-empty'}">${polar[k]?.valor ? polar[k].valor.toFixed(1) : '·'}</td>`;
-    }
-    h += '</tr>';
-  }
-  const target = document.getElementById('ptable'); if(target) target.innerHTML = h + '</tbody>';
-}
-
-function updateStats() {
-  document.getElementById('stat-total').textContent = Object.keys(polar).length;
-}
-
-function updatePolar() {
-  if (CFG.motorMode || activeSpeed() < CFG.minSpeed || !S.live) return;
-  const k = pKey(S.tws, S.twa); const speed = activeSpeed();
-  if (!polar[k]?.valor || speed > polar[k].valor) {
-    polar[k] = { valor: parseFloat(speed.toFixed(2)), tipo: CFG.speedSource };
-    schedulePolarSave(polar);
-  }
-}
-
-function process() {
-  updatePolar(); updateDash();
-  calculateTactics(S, activeSpeed()); updateStratPanel();
-  drawTacticalMap(S, CFG, polar);
-  
-  if (++histTick % 15 === 0 && S.live) {
-    const entry = { 
-      timestamp: new Date().toISOString(), 
-      t: new Date().toLocaleTimeString(), 
-      tws: S.tws, twa: S.twa, 
-      spd: activeSpeed(), 
-      perf: calcPerf(),
-      src: CFG.motorMode ? 'MOTOR' : CFG.speedSource
-    };
-    history.unshift(entry); saveHistoryEntry(entry);
-  }
-}
-
-function connect(host, port) {
+function connectWebSocket() {
   if (ws) ws.close();
-  ws = new WebSocket(`ws://${host}:${port}`);
-  ws.onopen = () => { S.live = true; document.getElementById('signal-pip').className = 'on'; document.getElementById('signal-label').textContent = `${host}:${port}`; };
-  ws.onmessage = e => { e.data.split('\n').forEach(parseNMEA); process(); };
-  ws.onclose = () => { S.live = false; document.getElementById('signal-pip').className = ''; document.getElementById('signal-label').textContent = 'sin señal'; };
+  const indicator = document.getElementById('net-status');
+  indicator.className = 'status-indicator connecting';
+
+  ws = new WebSocket(`ws://${CFG.ip}:${CFG.port}`);
+
+  ws.onopen = () => { indicator.className = 'status-indicator connected'; };
+  ws.onclose = () => { indicator.className = 'status-indicator disconnected'; };
+  ws.onerror = () => { indicator.className = 'status-indicator disconnected'; };
+
+  ws.onmessage = (event) => {
+    const lines = event.data.split('\n');
+    lines.forEach(line => parseNmea(line.trim()));
+    updateUI();
+  };
 }
 
-async function init() {
-  polar = await loadPolarFirebase();
-  
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      tab.classList.add('active'); document.getElementById('panel-' + tab.dataset.p).classList.add('active');
-      if (tab.dataset.p === 'strat') setTimeout(() => drawTacticalMap(S, CFG, polar), 50);
-      if (tab.dataset.p === 'polar') updatePolarTable();
-      if (tab.dataset.p === 'settings') updateStats();
+function parseNmea(line) {
+  if (!line.startsWith('$')) return;
+  const parts = line.split(',');
+  const type = parts[0].substring(3);
+
+  if (type === 'RMC') {
+    S.sog = parseFloat(parts[7]) || 0;
+    S.cog = parseFloat(parts[8]) || 0;
+    if (parts[3] && parts[5]) {
+      let l1 = parseFloat(parts[3].substring(0,2)) + parseFloat(parts[3].substring(2))/60;
+      let l2 = parseFloat(parts[5].substring(0,3)) + parseFloat(parts[5].substring(3))/60;
+      S.lat = parts[4] === 'S' ? -l1 : l1;
+      S.lon = parts[6] === 'W' ? -l2 : l2;
+    }
+  } else if (type === 'MWV') {
+    S.twa = parseFloat(parts[1]) || 0;
+    S.tws = parseFloat(parts[3]) || 0;
+  } else if (type === 'VHW') {
+    S.bsp = parseFloat(parts[5]) || 0;
+    S.hdg = parseFloat(parts[1]) || 0;
+  }
+}
+
+function calculatePerformance() {
+  import('./tactico.js').then(m => {
+    const speedAct = CFG.speedSource === 'SOG' ? S.sog : S.bsp;
+    const key = m.pKey(S.tws, S.twa);
+    const target = polarData[key]?.valor || 0;
+
+    const currentCell = document.getElementById(`p_${m.nearest(m.TWS_B, S.tws)}-${m.nearest(m.TWA_B, S.twa)}`);
+    document.querySelectorAll('#table-polar td').forEach(td => td.classList.remove('highlight-cell'));
+    if (currentCell) currentCell.classList.add('highlight-cell');
+
+    let perf = 0;
+    if (target > 0) perf = (speedAct / target) * 100;
+
+    document.getElementById('val-perf').textContent = perf > 0 ? `${perf.toFixed(1)}%` : '—';
+    const fill = document.getElementById('perf-fill');
+    if (fill) fill.style.width = `${Math.min(perf, 120)}%`;
+
+    calculateTactics(S, speedAct);
+    logHistory(perf);
+  });
+}
+
+function logHistory(perf) {
+  const now = Date.now();
+  if (now - lastLogTime < 15000) return; // Registro estricto cada 15 segundos
+  lastLogTime = now;
+
+  const timeStr = new Date().toLocaleTimeString();
+  const entry = { time: timeStr, sog: S.sog, cog: S.cog, tws: S.tws, twa: S.twa, perf: perf };
+  historyLog.unshift(entry);
+  if (historyLog.length > 50) historyLog.pop();
+
+  const tbody = document.getElementById('history-body');
+  if (tbody) {
+    tbody.innerHTML = historyLog.map(e => `
+      <tr><td>${e.time}</td><td>${e.sog.toFixed(1)}</td><td>${e.cog.toFixed(0)}°</td><td>${e.tws.toFixed(1)}</td><td>${e.twa.toFixed(0)}°</td><td>${e.perf > 0 ? e.perf.toFixed(0)+'%' : '—'}</td></tr>
+    `).join('');
+  }
+}
+
+function updateUI() {
+  document.getElementById('val-sog').textContent = S.sog.toFixed(1);
+  document.getElementById('val-cog').textContent = S.cog.toFixed(0);
+  document.getElementById('val-tws').textContent = S.tws.toFixed(1);
+  document.getElementById('val-twa').textContent = S.twa.toFixed(0);
+  document.getElementById('val-hdg').textContent = S.hdg.toFixed(0);
+  document.getElementById('val-bsp').textContent = S.bsp.toFixed(1);
+
+  calculatePerformance();
+  drawTacticalMap(S, CFG, polarData);
+
+  import('./tactico.js').then(m => {
+    document.getElementById('strat-dist').textContent = m.fmt(REGATA.distLine, 0) + ' m';
+    document.getElementById('strat-ttl').textContent = REGATA.ttl ? `${Math.floor(REGATA.ttl/60)}m ${Math.floor(REGATA.ttl%60)}s` : '—';
+    document.getElementById('strat-action').textContent = REGATA.action;
+  });
+}
+
+// Lógica del Cronómetro de Regata
+setInterval(() => {
+  if (!REGATA.chronoActive) return;
+  if (REGATA.chrono > 0) {
+    REGATA.chrono--;
+    const min = String(Math.floor(REGATA.chrono / 60)).padStart(2, '0');
+    const sec = String(REGATA.chrono % 60).padStart(2, '0');
+    document.getElementById('chrono-display').textContent = `${min}:${sec}`;
+  } else {
+    REGATA.chronoActive = false;
+  }
+}, 1000);
+
+function init() {
+  loadPolar();
+
+  document.getElementById('btn-save-net')?.addEventListener('click', () => {
+    CFG.ip = document.getElementById('cfg-ip').value;
+    CFG.port = document.getElementById('cfg-port').value;
+    CFG.speedSource = document.getElementById('cfg-speed-source').value;
+    connectWebSocket();
+  });
+
+  document.getElementById('btn-start-chrono')?.addEventListener('click', () => { REGATA.chronoActive = !REGATA.chronoActive; });
+  document.getElementById('btn-sync-chrono')?.addEventListener('click', () => { REGATA.chrono = Math.ceil(REGATA.chrono / 60) * 60; });
+
+  document.getElementById('btn-set-pin')?.addEventListener('click', () => { REGATA.pin = { lat: S.lat, lon: S.lon }; });
+  document.getElementById('btn-set-comite')?.addEventListener('click', () => { REGATA.comite = { lat: S.lat, lon: S.lon }; });
+  document.getElementById('btn-set-barlovento')?.addEventListener('click', () => { REGATA.barlovento = { lat: S.lat, lon: S.lon }; });
+
+  // Botón interruptor para controlar el Autocentrado del Mapa
+  const autocenterBtn = document.getElementById('btn-autocenter');
+  if (autocenterBtn) {
+    autocenterBtn.addEventListener('click', () => {
+      CONFIG_MAPA.autocenter = !CONFIG_MAPA.autocenter;
+      if (CONFIG_MAPA.autocenter) {
+        autocenterBtn.textContent = "Autocentrado: ON";
+        autocenterBtn.style.background = "var(--surface)";
+        autocenterBtn.style.color = "var(--navy)";
+      } else {
+        autocenterBtn.textContent = "Autocentrado: OFF";
+        autocenterBtn.style.background = "transparent";
+        autocenterBtn.style.color = "var(--ink-2)";
+      }
     });
-  });
-
-  // Lógica robusta Modo Motor
-  const motorBtn = document.getElementById('motor-btn');
-  motorBtn.addEventListener('click', () => {
-    CFG.motorMode = !CFG.motorMode;
-    if(CFG.motorMode) {
-      motorBtn.classList.add('active');
-      motorBtn.textContent = "Motor Activo";
-    } else {
-      motorBtn.classList.remove('active');
-      motorBtn.textContent = "Modo Motor";
-    }
-    process();
-  });
-
-  document.getElementById('strat-sync-btn').addEventListener('click', () => {
-    REGATA.chrono = Math.round(REGATA.chrono / 60) * 60; updateChronoDisplay();
-    if (!REGATA.chronoActive) {
-      REGATA.chronoActive = true;
-      chronoInterval = setInterval(() => { REGATA.chrono--; updateChronoDisplay(); calculateTactics(S, activeSpeed()); updateStratPanel(); }, 1000);
-    }
-  });
-
-  document.getElementById('strat-reset-btn').addEventListener('click', () => { clearInterval(chronoInterval); REGATA.chronoActive = false; REGATA.chrono = 300; updateChronoDisplay(); });
-  document.getElementById('btn-mark-comite').addEventListener('click', () => { REGATA.comite = { lat: S.lat, lon: S.lon }; process(); });
-  document.getElementById('btn-mark-pin').addEventListener('click', () => { REGATA.pin = { lat: S.lat, lon: S.lon }; process(); });
-  document.getElementById('btn-mark-barlo').addEventListener('click', () => { REGATA.barlovento = { lat: S.lat, lon: S.lon }; process(); });
-  
-  document.getElementById('night-btn').addEventListener('click', () => document.body.classList.toggle('night-mode'));
-  document.getElementById('conn-btn').addEventListener('click', () => document.getElementById('overlay').style.display = 'flex');
-  document.getElementById('m-conn').addEventListener('click', () => { connect(document.getElementById('m-host').value, document.getElementById('m-port').value); document.getElementById('overlay').style.display = 'none'; });
-  document.getElementById('m-cancel').addEventListener('click', () => document.getElementById('overlay').style.display = 'none');
-  
-  connect('192.168.0.1', '10110');
+  }
 }
 
-init();
+window.addEventListener('DOMContentLoaded', init);
