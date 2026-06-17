@@ -2,9 +2,8 @@
    MÓDULO TÁCTICO: RENDERIZADO GRÁFICO DEL CAMPO DE REGATAS Y CÁLCULOS
    ══════════════════════════════════════════════════════════════════════════ */
 
-// Traduce distancias geográficas de Lat/Lon a metros cartesianos relativos (origen en el barco)
 export function getMetersFromLatLon(targetLat, targetLon, baseLat, baseLon) {
-  const R = 6378137; // Radio de la Tierra en metros
+  const R = 6378137;
   const dLat = (targetLat - baseLat) * Math.PI / 180;
   const dLon = (targetLon - baseLon) * Math.PI / 180;
   const x = dLon * R * Math.cos(baseLat * Math.PI / 180);
@@ -12,22 +11,24 @@ export function getMetersFromLatLon(targetLat, targetLon, baseLat, baseLon) {
   return { x: x, y: y };
 }
 
-// Inicializa las directivas de bloqueo táctil estricto sobre el contenedor del mapa en iPad
+// Bloquea por completo los gestos de Safari/Chrome en iPadOS impidiendo el deslizamiento de pantalla
 export function initTouchLock() {
   const container = document.getElementById('map-container');
   if (!container) return;
 
-  const preventDefaultBehavior = (e) => {
-    if (e.neutralized) return;
-    e.preventDefault();
+  const interceptor = (e) => {
+    if (e.cancelable) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
-  // Bloquea scroll elástico nativo de iOS dentro de la ventana táctica
-  container.addEventListener('touchstart', preventDefaultBehavior, { passive: false });
-  container.addEventListener('touchmove', preventDefaultBehavior, { passive: false });
+  // Forzamos listeners no pasivos para anular el comportamiento nativo del navegador
+  container.addEventListener('touchstart', interceptor, { passive: false });
+  container.addEventListener('touchmove', interceptor, { passive: false });
+  container.addEventListener('touchend', interceptor, { passive: false });
 }
 
-// Ejecuta las proyecciones trigonométricas y calcula la velocidad neta de aproximación a la línea (TTL)
 export function calculateTactics(S, REGATA, activeSpeedFn) {
   if (REGATA.pin) { 
     const p = getMetersFromLatLon(REGATA.pin.lat, REGATA.pin.lon, S.lat, S.lon); 
@@ -43,7 +44,7 @@ export function calculateTactics(S, REGATA, activeSpeedFn) {
   }
 
   if (REGATA.pin && REGATA.comite) {
-    const x0 = 0, y0 = 0; // Origen posicionado en el barco
+    const x0 = 0, y0 = 0;
     const x1 = REGATA.pin.x, y1 = REGATA.pin.y;
     const x2 = REGATA.comite.x, y2 = REGATA.comite.y;
     
@@ -70,28 +71,36 @@ export function calculateTactics(S, REGATA, activeSpeedFn) {
   }
 }
 
-// Redibuja el canvas con escala matemática exacta sin alterar el comportamiento de la interfaz externa
 export function drawTacticalMap(S, REGATA, CFG, targetCeñidaAngleFn) {
   const canvas = document.getElementById('strat-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * window.devicePixelRatio;
-  canvas.height = rect.height * window.devicePixelRatio;
+  
+  // Sincronización estricta de dimensiones de píxeles para pantallas Retina/iPad
+  const desiredWidth = Math.floor(rect.width);
+  const desiredHeight = Math.floor(rect.height);
+  
+  if (canvas.width !== desiredWidth * window.devicePixelRatio || canvas.height !== desiredHeight * window.devicePixelRatio) {
+    canvas.width = desiredWidth * window.devicePixelRatio;
+    canvas.height = desiredHeight * window.devicePixelRatio;
+  }
+  
+  ctx.resetTransform();
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-  const cx = rect.width / 2;
-  const cy = rect.height / 2 + 50; 
+  const cx = desiredWidth / 2;
+  const cy = desiredHeight / 2 + 50; 
 
   let maxDist = 150;
   if (REGATA.distLine && REGATA.distLine > maxDist) maxDist = REGATA.distLine * 1.2;
-  const scale = (rect.height * 0.6) / maxDist;
+  const scale = (desiredHeight * 0.6) / maxDist;
 
-  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.clearRect(0, 0, desiredWidth, desiredHeight);
 
-  // Cuadrícula Náutica concéntrica cada 50m
-  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--rule');
+  // Anillos concéntricos de distancia cada 50 metros
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--rule') || '#dedad4';
   ctx.lineWidth = 0.5;
   for(let r=50; r <= maxDist; r+=50) {
     ctx.beginPath(); ctx.arc(cx, cy, r * scale, 0, 2*Math.PI); ctx.stroke();
@@ -99,24 +108,23 @@ export function drawTacticalMap(S, REGATA, CFG, targetCeñidaAngleFn) {
 
   const toPx = (mx, my) => ({ x: cx + (mx * scale), y: cy - (my * scale) });
 
-  // Render de Línea de Salida
+  // Línea de salida
   if (REGATA.pin && REGATA.comite) {
     const pPx = toPx(REGATA.pin.x, REGATA.pin.y);
     const cPx = toPx(REGATA.comite.x, REGATA.comite.y);
 
-    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy');
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy') || '#2b4c7e';
     ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(pPx.x, pPx.y); ctx.lineTo(cPx.x, cPx.y); ctx.stroke();
 
-    ctx.fillStyle = '#8b1a1a'; ctx.beginPath(); ctx.arc(pPx.x, pPx.y, 7, 0, 2*Math.PI); ctx.fill(); // Pin (Roja)
-    ctx.fillStyle = '#2d5c3f'; ctx.beginPath(); ctx.arc(cPx.x, cPx.y, 7, 0, 2*Math.PI); ctx.fill(); // Comité (Verde)
+    ctx.fillStyle = '#8b1a1a'; ctx.beginPath(); ctx.arc(pPx.x, pPx.y, 7, 0, 2*Math.PI); ctx.fill();
+    ctx.fillStyle = '#2d5c3f'; ctx.beginPath(); ctx.arc(cPx.x, cPx.y, 7, 0, 2*Math.PI); ctx.fill();
   }
 
-  // Render de Barlovento y Laylines Tácticas
+  // Barlovento y Laylines
   if (REGATA.barlovento) {
     const bPx = toPx(REGATA.barlovento.x, REGATA.barlovento.y);
-
-    ctx.fillStyle = '#b8915a'; ctx.beginPath(); ctx.arc(bPx.x, bPx.y, 8, 0, 2*Math.PI); ctx.fill(); // Boya Amarilla
+    ctx.fillStyle = '#b8915a'; ctx.beginPath(); ctx.arc(bPx.x, bPx.y, 8, 0, 2*Math.PI); ctx.fill();
 
     const twd = S.cog + S.twa;
     const targetCeñida = targetCeñidaAngleFn();
@@ -125,19 +133,19 @@ export function drawTacticalMap(S, REGATA, CFG, targetCeñidaAngleFn) {
     const laylineBaborRad = ((90 - (twd + targetCeñida)) * Math.PI) / 180;
 
     ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = '#2b4c7e'; // Estribor
+    ctx.strokeStyle = '#2b4c7e';
     ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y);
     ctx.lineTo(bPx.x - Math.cos(laylineEstriborRad)*300, bPx.y + Math.sin(laylineEstriborRad)*300);
     ctx.stroke();
 
-    ctx.strokeStyle = '#b8915a'; // Babor
+    ctx.strokeStyle = '#b8915a';
     ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y);
     ctx.lineTo(bPx.x - Math.cos(laylineBaborRad)*300, bPx.y + Math.sin(laylineBaborRad)*300);
     ctx.stroke();
     ctx.setLineDash([]);
   }
 
-  // Renderizado a escala del Barco
+  // Representación del casco a escala real
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate((S.cog * Math.PI) / 180);
@@ -145,8 +153,8 @@ export function drawTacticalMap(S, REGATA, CFG, targetCeñidaAngleFn) {
   const esloraPx = CFG.eslora * scale;
   const mangaPx = esloraPx * 0.32;
 
-  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--ink');
-  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--surface');
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--ink') || '#1a1a1a';
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--surface') || '#ffffff';
   ctx.lineWidth = 1.5;
 
   ctx.beginPath();
