@@ -26,23 +26,23 @@
     }
 
     body.night-mode {
-      /* Fondos: Gris oscurísimo con matiz rojizo muy cálido en vez de negro puro */
-      --bg:       #0f0a0a;
-      --surface:  #140f0f;
-      --rule:     #241919;
+      /* MODO NOCHE ULTRA-ATENUADO (Protección de retina estricta) */
+      --bg:       #000000; /* Negro puro: píxeles apagados en OLED */
+      --surface:  #080404; /* Superficies casi invisibles */
+      --rule:     #1c0a0a; /* Líneas divisorias en un marrón/rojo óxido levísimo */
       
-      /* Textos principales: Un salmón/carmín ceniza muy suave y mate */
-      --ink:      #d1a5a5;
+      /* Textos principales: Rojo vino/carmín muy amortiguado */
+      --ink:      #8c4343; 
       
-      /* Textos secundarios y desactivados: Tonos óxido y tierra apagados */
-      --ink-2:    #8f6b6b;
-      --ink-3:    #543d3d;
+      /* Textos secundarios y desactivados: Tonos tierra mínimos */
+      --ink-2:    #5e2d2d;
+      --ink-3:    #3b1b1b;
       
-      /* Elementos gráficos e indicaciones filtrados para la oscuridad */
-      --navy:     #b85c5c; /* Rojo teja mate para los bordes/títulos importantes */
-      --bronze:   #a87e58; /* Ocre atenuado */
-      --good:     #5e8a68; /* Verde oliva militar sutil (no deslumbra) */
-      --danger:   #9e4747; /* Rojo de alerta rebajado */
+      /* Colores gráficos funcionales rebajados al extremo */
+      --navy:     #7a3333; /* Los títulos y laylines principales pasan a rojo teja oscuro */
+      --bronze:   #6b4a2e; /* Ocre oscuro militar */
+      --good:     #2b4231; /* Verde bosque nocturno ultra-apagado */
+      --danger:   #692222; /* Rojo alerta rebajado */
     }
 
     html, body {
@@ -102,7 +102,7 @@
       border-radius: 3px; cursor: pointer; transition: background .15s;
     }
     #conn-btn:hover { background: rgba(43,76,126,.07); }
-    body.night-mode #conn-btn:hover { background: rgba(184,92,92,.07); }
+    body.night-mode #conn-btn:hover { background: rgba(122,51,51,.07); }
 
     nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--rule); flex-shrink: 0; }
     .tab {
@@ -138,7 +138,7 @@
     .perf-caption { margin-top: 5px; font-size: .72rem; color: var(--ink-2); }
 
     .row-targets { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); background: rgba(43,76,126,.02); }
-    body.night-mode .row-targets { background: rgba(184,92,92,.02); }
+    body.night-mode .row-targets { background: rgba(122,51,51,.02); }
     .row-mid, .row-bot { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
     .instr-cell { padding: 16px 24px; border-right: 1px solid var(--rule); }
     .instr-cell:last-child { border-right: none; }
@@ -180,7 +180,7 @@
     }
 
     .chrono-container { padding: 20px; border-bottom: 1px solid var(--rule); text-align: center; background: rgba(43,76,126,.02); }
-    body.night-mode .chrono-container { background: rgba(184,92,92,.02); }
+    body.night-mode .chrono-container { background: rgba(122,51,51,.02); }
     .chrono-display { font-weight: 700; font-size: 3.5rem; line-height: 1; color: var(--ink); letter-spacing: -0.03em; margin-bottom: 12px; }
     .chrono-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
     .strat-btn {
@@ -188,7 +188,7 @@
       font-size: .72rem; font-weight: 600; text-transform: uppercase; padding: 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
     }
     .strat-btn:hover { background: rgba(43,76,126,0.05); border-color: var(--navy); }
-    body.night-mode .strat-btn:hover { background: rgba(184,92,92,0.05); border-color: var(--navy); }
+    body.night-mode .strat-btn:hover { background: rgba(122,51,51,0.05); border-color: var(--navy); }
     .strat-btn.primary { background: var(--navy); color: var(--surface); border-color: var(--navy); }
     .strat-btn.danger { border-color: var(--danger); color: var(--danger); }
     .strat-btn.active-btn { background: var(--danger) !important; color: var(--surface) !important; border-color: var(--danger) !important; }
@@ -219,7 +219,7 @@
     table.ptable td.c-record  { color: var(--navy); font-weight: 700; }
     table.ptable td.c-near    { color: var(--bronze); }
     table.ptable td.c-cur     { background: rgba(43,76,126,.15); color: var(--navy); font-weight: 700; outline: 1px solid rgba(43,76,126,.4); outline-offset: -1px; }
-    body.night-mode table.ptable td.c-cur { background: rgba(184,92,92,.25); color: var(--ink); outline: 1px solid rgba(184,92,92,.5); }
+    body.night-mode table.ptable td.c-cur { background: rgba(140,67,67,.2); color: var(--ink); outline: 1px solid rgba(140,67,67,.4); }
     table.ptable td.c-sog     { color: var(--ink-3); font-style: italic; }
 
     /* HISTORIAL */
@@ -228,7 +228,7 @@
     .hist-table thead th { font-size: .65rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); text-align: left; padding: 0 16px 10px; border-bottom: 1px solid var(--rule); }
     .hist-table tbody tr { border-bottom: 1px solid var(--rule); }
     .hist-table tbody tr:hover { background: rgba(43,76,126,.03); }
-    body.night-mode .hist-table tbody tr:hover { background: rgba(184,92,92,.03); }
+    body.night-mode .hist-table tbody tr:hover { background: rgba(140,67,67,.03); }
     .hist-table tbody td { padding: 9px 16px; color: var(--ink); font-weight: 500; }
     .hist-table tbody td.ts { font-size: .72rem; color: var(--ink-3); }
     .hist-table tbody td.src { font-size: .68rem; font-style: italic; color: var(--ink-3); }
@@ -256,7 +256,7 @@
 
     /* OVERLAY NETWORK */
     #overlay { position: fixed; inset: 0; background: rgba(26,26,26,.45); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 200; touch-action: none; }
-    body.night-mode #overlay { background: rgba(15,10,10,.6); }
+    body.night-mode #overlay { background: rgba(0,0,0,.8); }
     #modal { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 32px; width: min(88vw, 380px); box-shadow: 0 8px 40px rgba(0,0,0,.1); }
     #modal h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
     #modal p { font-size: .8rem; color: var(--ink-2); line-height: 1.6; margin-bottom: 20px; }
@@ -403,8 +403,8 @@
         <div class="cfg-row">
           <label>Fuente Activa para la sesión:<small>BSP prioriza el agua; SOG calcula sobre fondo (GPS).</small></label>
           <select id="cfg-source" style="border:1px solid var(--navy); font-weight:500;">
-            <option value="BSP">BSP (BoatSpeed / Corredera)</option>
-            <option value="SOG" selected>SOG (GPS)</option>
+            <option value="BSP" selected>BSP (BoatSpeed / Corredera)</option>
+            <option value="SOG">SOG (GPS)</option>
           </select>
         </div>
         <div class="cfg-row">
