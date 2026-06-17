@@ -1,176 +1,159 @@
-export const REGATA = {
-  pin: null, comite: null, barlovento: null,
-  chrono: 300, chronoActive: false,
-  distLine: null, ttl: null, action: '—'
-};
+/* ══════════════════════════════════════════════════════════════════════════
+   MÓDULO TÁCTICO: RENDERIZADO GRÁFICO DEL CAMPO DE REGATAS Y CÁLCULOS
+   ══════════════════════════════════════════════════════════════════════════ */
 
-export const TWS_B = [5,8,10,12,14,16,18,20,25,30];
-export const TWA_B = [30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180];
-
-export const nearest = (arr,v) => arr.reduce((a,b) => Math.abs(b-v)<Math.abs(a-v)?b:a);
-export const pKey = (tws,twa) => `${nearest(TWS_B,tws)}_${nearest(TWA_B,twa)}`;
-export const vmg = (speed,twa) => speed * Math.cos(twa * Math.PI/180);
-export const fmt = (v,d=1) => (typeof v==='number'&&!isNaN(v)) ? v.toFixed(d) : '—';
-
-// Configuración global de la vista del lienzo táctico
-export let CONFIG_MAPA = { autocenter: true };
-let offsetX = 0;
-let offsetY = 0;
-let isDragging = false;
-let startX = 0;
-let startY = 0;
-
-function getMetersFromLatLon(targetLat, targetLon, baseLat, baseLon) {
-  const R = 6378137;
+// Traduce distancias geográficas de Lat/Lon a metros cartesianos relativos (origen en el barco)
+export function getMetersFromLatLon(targetLat, targetLon, baseLat, baseLon) {
+  const R = 6378137; // Radio de la Tierra en metros
   const dLat = (targetLat - baseLat) * Math.PI / 180;
   const dLon = (targetLon - baseLon) * Math.PI / 180;
-  return {
-    x: dLon * R * Math.cos(baseLat * Math.PI / 180),
-    y: dLat * R
+  const x = dLon * R * Math.cos(baseLat * Math.PI / 180);
+  const y = dLat * R;
+  return { x: x, y: y };
+}
+
+// Inicializa las directivas de bloqueo táctil estricto sobre el contenedor del mapa en iPad
+export function initTouchLock() {
+  const container = document.getElementById('map-container');
+  if (!container) return;
+
+  const preventDefaultBehavior = (e) => {
+    if (e.neutralized) return;
+    e.preventDefault();
   };
+
+  // Bloquea scroll elástico nativo de iOS dentro de la ventana táctica
+  container.addEventListener('touchstart', preventDefaultBehavior, { passive: false });
+  container.addEventListener('touchmove', preventDefaultBehavior, { passive: false });
 }
 
-function getTargetCeñidaAngle(polar, currentTws) {
-  const twsBucket = nearest(TWS_B, currentTws);
-  let bestVmg = 0, targetTwa = 45;
-  for (const twa of TWA_B) {
-    if (twa > 90) continue;
-    const r = polar[`${twsBucket}_${twa}`]?.valor;
-    if (r) {
-      const v = vmg(r, twa);
-      if (v > bestVmg) { bestVmg = v; targetTwa = twa; }
-    }
+// Ejecuta las proyecciones trigonométricas y calcula la velocidad neta de aproximación a la línea (TTL)
+export function calculateTactics(S, REGATA, activeSpeedFn) {
+  if (REGATA.pin) { 
+    const p = getMetersFromLatLon(REGATA.pin.lat, REGATA.pin.lon, S.lat, S.lon); 
+    REGATA.pin.x = p.x; REGATA.pin.y = p.y; 
   }
-  return targetTwa;
-}
-
-export function calculateTactics(S, speedAct) {
-  if (REGATA.pin) { const p = getMetersFromLatLon(REGATA.pin.lat, REGATA.pin.lon, S.lat, S.lon); REGATA.pin.x = p.x; REGATA.pin.y = p.y; }
-  if (REGATA.comite) { const c = getMetersFromLatLon(REGATA.comite.lat, REGATA.comite.lon, S.lat, S.lon); REGATA.comite.x = c.x; REGATA.comite.y = c.y; }
-  if (REGATA.barlovento) { const w = getMetersFromLatLon(REGATA.barlovento.lat, REGATA.barlovento.lon, S.lat, S.lon); REGATA.barlovento.x = w.x; REGATA.barlovento.y = w.y; }
+  if (REGATA.comite) { 
+    const c = getMetersFromLatLon(REGATA.comite.lat, REGATA.comite.lon, S.lat, S.lon); 
+    REGATA.comite.x = c.x; REGATA.comite.y = c.y; 
+  }
+  if (REGATA.barlovento) { 
+    const w = getMetersFromLatLon(REGATA.barlovento.lat, REGATA.barlovento.lon, S.lat, S.lon); 
+    REGATA.barlovento.x = w.x; REGATA.barlovento.y = w.y; 
+  }
 
   if (REGATA.pin && REGATA.comite) {
+    const x0 = 0, y0 = 0; // Origen posicionado en el barco
     const x1 = REGATA.pin.x, y1 = REGATA.pin.y;
     const x2 = REGATA.comite.x, y2 = REGATA.comite.y;
-    REGATA.distLine = Math.abs((x2 - x1) * y1 - x1 * (y2 - y1)) / Math.sqrt((x2 - x1)**2 + (y2 - y1)**2);
+    
+    const numerador = Math.abs((x2 - x1) * (y1 - y0) - (x1 - x0) * (y2 - y1));
+    const denominador = Math.sqrt((x2 - x1)**2 + (y2 - y1)**2);
+    REGATA.distLine = denominador > 0 ? numerador / denominador : 0;
 
-    const anglePerp = Math.atan2(y2 - y1, x2 - x1) + Math.PI / 2;
-    const vApproach = ((speedAct * 1852) / 3600) * Math.cos(((90 - S.cog) * Math.PI / 180) - anglePerp);
+    const angleLinea = Math.atan2(y2 - y1, x2 - x1);
+    const anglePerpendicular = angleLinea + Math.PI / 2;
+    const cogRad = (90 - S.cog) * Math.PI / 180;
+    const speedMps = (activeSpeedFn() * 1852) / 3600;
+    
+    const vApproach = speedMps * Math.cos(cogRad - anglePerpendicular);
 
     if (vApproach > 0.1) {
       REGATA.ttl = REGATA.distLine / vApproach;
       REGATA.action = (REGATA.chrono - REGATA.ttl > 0) ? 'GANAR TIEMPO' : 'AHORRAR TIEMPO';
     } else {
-      REGATA.ttl = null; REGATA.action = 'SIN APROXIMACIÓN';
+      REGATA.ttl = null; 
+      REGATA.action = 'SIN APROXIMACIÓN';
     }
+  } else {
+    REGATA.distLine = null; REGATA.ttl = null; REGATA.action = '—';
   }
 }
 
-function setupCanvasEvents(canvas) {
-  if (canvas.dataset.eventsListener === 'true') return;
-  canvas.dataset.eventsListener = 'true';
-
-  const getPos = (e) => {
-    if (e.touches && e.touches.length > 0) {
-      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-    return { x: e.clientX, y: e.clientY };
-  };
-
-  const startDrag = (e) => {
-    if (CONFIG_MAPA.autocenter) {
-      CONFIG_MAPA.autocenter = false;
-      const btn = document.getElementById('btn-autocenter');
-      if (btn) {
-        btn.textContent = "Autocentrado: OFF";
-        btn.style.background = "transparent";
-        btn.style.color = "var(--ink-2)";
-      }
-    }
-    isDragging = true;
-    const pos = getPos(e);
-    startX = pos.x - offsetX;
-    startY = pos.y - offsetY;
-  };
-
-  const doDrag = (e) => {
-    if (!isDragging) return;
-    const pos = getPos(e);
-    offsetX = pos.x - startX;
-    offsetY = pos.y - startY;
-  };
-
-  const endDrag = () => { isDragging = false; };
-
-  canvas.addEventListener('mousedown', startDrag);
-  window.addEventListener('mousemove', doDrag);
-  window.addEventListener('mouseup', endDrag);
-
-  canvas.addEventListener('touchstart', startDrag, { passive: true });
-  window.addEventListener('touchmove', doDrag, { passive: true });
-  window.addEventListener('touchend', endDrag);
-}
-
-export function drawTacticalMap(S, CFG, polar) {
+// Redibuja el canvas con escala matemática exacta sin alterar el comportamiento de la interfaz externa
+export function drawTacticalMap(S, REGATA, CFG, targetCeñidaAngleFn) {
   const canvas = document.getElementById('strat-canvas');
   if (!canvas) return;
-  
-  setupCanvasEvents(canvas);
-
   const ctx = canvas.getContext('2d');
+  
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * window.devicePixelRatio; canvas.height = rect.height * window.devicePixelRatio;
+  canvas.width = rect.width * window.devicePixelRatio;
+  canvas.height = rect.height * window.devicePixelRatio;
   ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
-  if (CONFIG_MAPA.autocenter) {
-    offsetX = 0;
-    offsetY = 0;
-  }
+  const cx = rect.width / 2;
+  const cy = rect.height / 2 + 50; 
 
-  const cx = (rect.width / 2) + offsetX;
-  const cy = (rect.height / 2 + 50) + offsetY;
-
-  let maxDist = 150; if (REGATA.distLine && REGATA.distLine > maxDist) maxDist = REGATA.distLine * 1.2;
-  const scale = (rect.height * 0.6) / maxDist; 
+  let maxDist = 150;
+  if (REGATA.distLine && REGATA.distLine > maxDist) maxDist = REGATA.distLine * 1.2;
+  const scale = (rect.height * 0.6) / maxDist;
 
   ctx.clearRect(0, 0, rect.width, rect.height);
-  const ruleColor = getComputedStyle(document.body).getPropertyValue('--rule');
-  const navyColor = getComputedStyle(document.body).getPropertyValue('--navy');
 
-  ctx.strokeStyle = ruleColor; ctx.lineWidth = 0.5;
-  for(let r=50; r <= maxDist; r+=50) { ctx.beginPath(); ctx.arc(cx, cy, r * scale, 0, 2*Math.PI); ctx.stroke(); }
+  // Cuadrícula Náutica concéntrica cada 50m
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--rule');
+  ctx.lineWidth = 0.5;
+  for(let r=50; r <= maxDist; r+=50) {
+    ctx.beginPath(); ctx.arc(cx, cy, r * scale, 0, 2*Math.PI); ctx.stroke();
+  }
 
   const toPx = (mx, my) => ({ x: cx + (mx * scale), y: cy - (my * scale) });
 
+  // Render de Línea de Salida
   if (REGATA.pin && REGATA.comite) {
-    const pPx = toPx(REGATA.pin.x, REGATA.pin.y), cPx = toPx(REGATA.comite.x, REGATA.comite.y);
-    ctx.strokeStyle = navyColor; ctx.lineWidth = 2.5;
+    const pPx = toPx(REGATA.pin.x, REGATA.pin.y);
+    const cPx = toPx(REGATA.comite.x, REGATA.comite.y);
+
+    ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--navy');
+    ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(pPx.x, pPx.y); ctx.lineTo(cPx.x, cPx.y); ctx.stroke();
-    ctx.fillStyle = '#b22222'; ctx.beginPath(); ctx.arc(pPx.x, pPx.y, 6, 0, 2*Math.PI); ctx.fill();
-    ctx.fillStyle = '#227046'; ctx.beginPath(); ctx.arc(cPx.x, cPx.y, 6, 0, 2*Math.PI); ctx.fill();
+
+    ctx.fillStyle = '#8b1a1a'; ctx.beginPath(); ctx.arc(pPx.x, pPx.y, 7, 0, 2*Math.PI); ctx.fill(); // Pin (Roja)
+    ctx.fillStyle = '#2d5c3f'; ctx.beginPath(); ctx.arc(cPx.x, cPx.y, 7, 0, 2*Math.PI); ctx.fill(); // Comité (Verde)
   }
 
+  // Render de Barlovento y Laylines Tácticas
   if (REGATA.barlovento) {
     const bPx = toPx(REGATA.barlovento.x, REGATA.barlovento.y);
-    ctx.fillStyle = '#a37f4c'; ctx.beginPath(); ctx.arc(bPx.x, bPx.y, 7, 0, 2*Math.PI); ctx.fill();
 
-    const twd = S.cog + S.twa, targetC = getTargetCeñidaAngle(polar, S.tws);
-    const leRad = ((90 - (twd - targetC)) * Math.PI) / 180, lbRad = ((90 - (twd + targetC)) * Math.PI) / 180;
+    ctx.fillStyle = '#b8915a'; ctx.beginPath(); ctx.arc(bPx.x, bPx.y, 8, 0, 2*Math.PI); ctx.fill(); // Boya Amarilla
 
-    ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
-    ctx.strokeStyle = navyColor; ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(leRad)*300, bPx.y + Math.sin(leRad)*300); ctx.stroke();
-    ctx.strokeStyle = '#a37f4c'; ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y); ctx.lineTo(bPx.x - Math.cos(lbRad)*300, bPx.y + Math.sin(lbRad)*300); ctx.stroke();
+    const twd = S.cog + S.twa;
+    const targetCeñida = targetCeñidaAngleFn();
+
+    const laylineEstriborRad = ((90 - (twd - targetCeñida)) * Math.PI) / 180;
+    const laylineBaborRad = ((90 - (twd + targetCeñida)) * Math.PI) / 180;
+
+    ctx.lineWidth = 1.5; ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#2b4c7e'; // Estribor
+    ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y);
+    ctx.lineTo(bPx.x - Math.cos(laylineEstriborRad)*300, bPx.y + Math.sin(laylineEstriborRad)*300);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#b8915a'; // Babor
+    ctx.beginPath(); ctx.moveTo(bPx.x, bPx.y);
+    ctx.lineTo(bPx.x - Math.cos(laylineBaborRad)*300, bPx.y + Math.sin(laylineBaborRad)*300);
+    ctx.stroke();
     ctx.setLineDash([]);
   }
 
-  // Renderizado e imprecisión blindada a 12 metros estrictos de eslora real
-  ctx.save(); ctx.translate(cx, cy); ctx.rotate((S.cog * Math.PI) / 180);
-  
-  const esloraFijaMeters = 12;
-  const lPx = esloraFijaMeters * scale; 
-  const mPx = lPx * 0.32; 
-  
-  ctx.fillStyle = navyColor; ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--surface'); ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(0, -lPx/2); ctx.quadraticCurveTo(mPx/2, -lPx/6, mPx/2, lPx/2); ctx.lineTo(-mPx/2, lPx/2); ctx.quadraticCurveTo(-mPx/2, -lPx/6, 0, -lPx/2);
-  ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+  // Renderizado a escala del Barco
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate((S.cog * Math.PI) / 180);
+
+  const esloraPx = CFG.eslora * scale;
+  const mangaPx = esloraPx * 0.32;
+
+  ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--ink');
+  ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--surface');
+  ctx.lineWidth = 1.5;
+
+  ctx.beginPath();
+  ctx.moveTo(0, -esloraPx/2);
+  ctx.quadraticCurveTo(mangaPx/2, -esloraPx/6, mangaPx/2, esloraPx/2);
+  ctx.lineTo(-mangaPx/2, esloraPx/2);
+  ctx.quadraticCurveTo(-mangaPx/2, -esloraPx/6, 0, -esloraPx/2);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
 }
