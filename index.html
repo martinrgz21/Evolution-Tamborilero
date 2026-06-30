@@ -2,276 +2,21 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Evolution Tamborilero</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:       #f5f4f0;
-      --surface:  #ffffff;
-      --rule:     #dedad4;
-      --ink:      #1a1a1a;
-      --ink-2:    #6b6560;
-      --ink-3:    #b0aca6;
-      --navy:     #2b4c7e;
-      --bronze:   #b8915a;
-      --danger:   #8b1a1a;
-      --good:     #2d5c3f;
-      --sans:     'Inter', system-ui, -apple-system, sans-serif;
-    }
-
-    body.night-mode {
-      --bg:       #0d0000;
-      --surface:  #1a0000;
-      --rule:     #330000;
-      --ink:      #ff3333;
-      --ink-2:    #aa0000;
-      --ink-3:    #550000;
-      --navy:     #ff0000;
-      --bronze:   #ff6666;
-      --good:     #ff3333;
-    }
-
-    html, body {
-      height: 100dvh;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--ink);
-      font-family: var(--sans);
-      font-size: 14px;
-      -webkit-font-smoothing: antialiased;
-      transition: background 0.3s, color 0.3s;
-      /* Fijación total de pantalla para evitar el arrastre elástico en el iPad */
-      position: fixed;
-      width: 100%;
-      touch-action: none;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-
-    #app { display: flex; flex-direction: column; height: 100dvh; }
-
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 24px; height: 52px; background: var(--surface);
-      border-bottom: 1px solid var(--rule); flex-shrink: 0;
-    }
-    .wordmark { font-weight: 700; font-size: 1.1rem; letter-spacing: -.01em; color: var(--navy); }
-    .wordmark em { font-style: normal; font-weight: 400; color: var(--ink-2); font-size: .95rem; margin-left: 4px; }
-    .header-right { display: flex; align-items: center; gap: 15px; }
-
-    #signal {
-      display: flex; align-items: center; gap: 7px; font-size: .72rem;
-      font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3);
-    }
-    #signal-pip { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); transition: background .4s; }
-    #signal-pip.on { background: var(--good); }
-
-    #fb-signal { font-size: .72rem; font-weight: 500; color: var(--ink-3); transition: color .3s; }
-    #fb-signal.synced { color: var(--good); }
-    #fb-signal.error  { color: var(--danger); }
-
-    #night-btn, #motor-btn {
-      font-family: var(--sans); font-size: .72rem; font-weight: 600;
-      letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
-      background: transparent; border: 1px solid var(--rule); padding: 5px 12px;
-      border-radius: 3px; cursor: pointer; transition: all .2s;
-    }
-    #motor-btn.active {
-      color: #fff; background: var(--danger); border-color: var(--danger);
-      animation: blinker 1.5s linear infinite;
-    }
-    @keyframes blinker { 50% { opacity: 0.7; } }
-
-    #conn-btn {
-      font-family: var(--sans); font-size: .72rem; font-weight: 500;
-      letter-spacing: .08em; text-transform: uppercase; color: var(--navy);
-      background: transparent; border: 1px solid var(--navy); padding: 5px 14px;
-      border-radius: 3px; cursor: pointer; transition: background .15s;
-    }
-    #conn-btn:hover { background: rgba(43,76,126,.07); }
-
-    nav { display: flex; background: var(--surface); border-bottom: 1px solid var(--rule); flex-shrink: 0; }
-    .tab {
-      padding: 13px 22px; font-size: .72rem; font-weight: 600;
-      letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
-      cursor: pointer; border-bottom: 2px solid transparent; user-select: none;
-      transition: color .2s, border-color .2s;
-    }
-    .tab.active { color: var(--navy); border-bottom-color: var(--navy); }
-
-    #content { flex: 1; overflow: hidden; position: relative; }
-    .panel { position: absolute; inset: 0; overflow-y: auto; display: none; }
-    .panel.active { display: block; }
-
-    /* INSTRUMENTOS */
-    #panel-dash { padding: 0; display: none; flex-direction: column; }
-    #panel-dash.active { display: flex; }
-    .row-top { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--rule); }
-    .hero-cell { padding: 24px 32px; border-right: 1px solid var(--rule); }
-    .hero-cell:last-child { border-right: none; }
-    .cell-label { font-size: .65rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; display: block; }
-    .value-xl { font-size: 3.8rem; font-weight: 700; line-height: 1; color: var(--ink); letter-spacing: -0.03em; }
-    .value-xl .unit { font-size: .8rem; font-weight: 400; color: var(--ink-2); margin-left: 6px; letter-spacing: normal; }
-    .perf-number { font-size: 3.8rem; font-weight: 700; line-height: 1; color: var(--ink); letter-spacing: -0.03em; transition: color .4s; }
-    .perf-number.st-good { color: var(--good); }
-    .perf-number.st-mid  { color: var(--bronze); }
-    .perf-number.st-bad  { color: var(--danger); }
-    .perf-bar-track { height: 2px; background: var(--rule); margin-top: 10px; overflow: hidden; border-radius: 1px; }
-    .perf-bar-fill { height: 100%; width: 0%; background: var(--navy); transition: width .5s ease, background .4s; border-radius: 1px; }
-    .perf-bar-fill.st-good { background: var(--good); }
-    .perf-bar-fill.st-mid  { background: var(--bronze); }
-    .perf-bar-fill.st-bad  { background: var(--danger); }
-    .perf-caption { margin-top: 5px; font-size: .72rem; color: var(--ink-2); }
-
-    .row-targets { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); background: rgba(43,76,126,.03); }
-    .row-mid, .row-bot { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--rule); }
-    .instr-cell { padding: 16px 24px; border-right: 1px solid var(--rule); }
-    .instr-cell:last-child { border-right: none; }
-    .value-lg { font-size: 2.2rem; font-weight: 700; line-height: 1; color: var(--ink); letter-spacing: -0.02em; }
-    .value-lg .unit { font-size: .72rem; font-weight: 400; color: var(--ink-3); margin-left: 4px; letter-spacing: normal; }
-
-    .vmg-banner { display: grid; grid-template-columns: 1fr 1fr 1fr; padding: 18px 32px; background: var(--surface); }
-    .vmg-banner-cell { padding: 0 20px; border-right: 1px solid var(--rule); }
-    .vmg-banner-cell:first-child { padding-left: 0; }
-    .vmg-banner-cell:last-child { border-right: none; }
-    .value-md { font-size: 1.6rem; font-weight: 600; line-height: 1; color: var(--ink); }
-    .advice-text { font-size: 1.3rem; font-weight: 500; color: var(--ink-2); transition: color .4s; }
-    .advice-text.st-good { color: var(--good); }
-    .advice-text.st-mid  { color: var(--bronze); }
-    .advice-text.st-bad  { color: var(--danger); }
-
-    /* ESTRATEGIA Y MAPA (CON CONTENEDOR TÁCTIL ABSOLUTO) */
-    #panel-strat { padding: 0; display: none; height: 100%; grid-template-columns: 320px 1fr; }
-    #panel-strat.active { display: grid; }
-    .strat-sidebar { background: var(--surface); border-right: 1px solid var(--rule); display: flex; flex-direction: column; height: 100%; overflow-y: auto; z-index: 10; }
-    
-    .strat-map-container { 
-      position: relative; 
-      width: 100%; 
-      height: 100%; 
-      background: var(--bg); 
-      overflow: hidden;
-      /* Bloqueo a nivel CSS nativo para navegadores basados en WebKit (iPad) */
-      touch-action: none !important;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    #strat-canvas { 
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; 
-      height: 100%; 
-      display: block; 
-      touch-action: none !important;
-    }
-
-    .chrono-container { padding: 20px; border-bottom: 1px solid var(--rule); text-align: center; background: rgba(43,76,126,.02); }
-    .chrono-display { font-weight: 700; font-size: 3.5rem; line-height: 1; color: var(--ink); letter-spacing: -0.03em; margin-bottom: 12px; }
-    .chrono-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-    .strat-btn {
-      background: var(--surface); border: 1px solid var(--rule); color: var(--ink); font-family: var(--sans);
-      font-size: .72rem; font-weight: 600; text-transform: uppercase; padding: 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
-    }
-    .strat-btn:hover { background: rgba(43,76,126,0.05); border-color: var(--navy); }
-    .strat-btn.primary { background: var(--navy); color: #fff; border-color: var(--navy); }
-    .strat-btn.danger { border-color: var(--danger); color: var(--danger); }
-    .strat-btn.active-btn { background: var(--danger) !important; color: white !important; border-color: var(--danger) !important; }
-
-    .strat-metrics { padding: 16px 20px; flex: 1; }
-    .strat-metric-row { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--rule); }
-    .strat-metric-row:last-child { border-bottom: none; }
-    .strat-metric-lbl { font-size: .72rem; color: var(--ink-2); font-weight: 500; }
-    .strat-metric-val { font-size: 1.5rem; font-weight: 600; color: var(--ink); }
-    .strat-metric-val.action-ganar { color: var(--good); font-weight: 700; font-size: 1.1rem; text-transform: uppercase; }
-    .strat-metric-val.action-ahorrar { color: var(--danger); font-weight: 700; font-size: 1.1rem; text-transform: uppercase; animation: blinker 1s linear infinite; }
-
-    .mark-buttons { padding: 20px; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 8px; background: var(--surface); }
-
-    /* TABLA POLAR */
-    #panel-polar { padding: 24px; }
-    .polar-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
-    .polar-title { font-size: 1.2rem; font-weight: 600; color: var(--ink); }
-    .polar-subtitle { font-size: .7rem; color: var(--ink-2); margin-left: 10px; }
-    .polar-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 4px; }
-    table.ptable { border-collapse: collapse; font-size: .92rem; width: 100%; min-width: 560px; }
-    table.ptable th, table.ptable td { padding: 7px 12px; text-align: center; border: 1px solid var(--rule); }
-    table.ptable thead th { background: var(--surface); font-size: .65rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
-    table.ptable thead th.th-tws { color: var(--navy); }
-    table.ptable tbody th { background: var(--surface); font-size: .68rem; font-weight: 600; color: var(--ink-3); }
-    table.ptable td { background: var(--bg); font-weight: 500; }
-    table.ptable td.c-empty   { color: var(--rule); font-size: .75rem; }
-    table.ptable td.c-record  { color: var(--navy); font-weight: 700; }
-    table.ptable td.c-near    { color: var(--bronze); }
-    table.ptable td.c-cur     { background: rgba(43,76,126,.15); color: var(--navy); font-weight: 700; outline: 1px solid rgba(43,76,126,.4); outline-offset: -1px; }
-    body.night-mode table.ptable td.c-cur { background: rgba(255,0,0,.25); outline: 1px solid rgba(255,0,0,.5); }
-    table.ptable td.c-sog     { color: var(--ink-3); font-style: italic; }
-
-    /* HISTORIAL */
-    #panel-history { padding: 24px; }
-    .hist-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    .hist-table thead th { font-size: .65rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); text-align: left; padding: 0 16px 10px; border-bottom: 1px solid var(--rule); }
-    .hist-table tbody tr { border-bottom: 1px solid var(--rule); }
-    .hist-table tbody tr:hover { background: rgba(43,76,126,.03); }
-    .hist-table tbody td { padding: 9px 16px; color: var(--ink); font-weight: 500; }
-    .hist-table tbody td.ts { font-size: .72rem; color: var(--ink-3); }
-    .hist-table tbody td.src { font-size: .68rem; font-style: italic; color: var(--ink-3); }
-    .c-ph-good { color: var(--good); font-weight: 600; }
-    .c-ph-mid  { color: var(--bronze); font-weight: 600; }
-    .c-ph-bad  { color: var(--danger); font-weight: 600; }
-
-    /* AJUSTES Y MANTENIMIENTO */
-    #panel-settings { padding: 24px; }
-    .cfg-section { background: var(--surface); border: 1px solid var(--rule); border-radius: 4px; padding: 20px 24px; margin-bottom: 16px; }
-    .cfg-title { font-size: .65rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 16px; }
-    .cfg-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--rule); gap: 16px; }
-    .cfg-row:last-child { border-bottom: none; }
-    .cfg-row label { font-size: .85rem; color: var(--ink); line-height: 1.4; font-weight: 500; }
-    .cfg-row small { display: block; font-size: .72rem; color: var(--ink-3); margin-top: 2px; font-weight: 400; }
-    .cfg-row input[type=range] { width: 110px; accent-color: var(--navy); }
-    .cfg-row select, .cfg-row input[type=number] { background: var(--bg); border: 1px solid var(--rule); color: var(--ink); font-family: var(--sans); padding: 6px 10px; border-radius: 3px; font-size: .85rem; min-width: 80px; font-weight: 500; }
-    .cfg-val { font-size: .95rem; font-weight: 600; color: var(--navy); min-width: 36px; text-align: right; }
-    .danger-btn { background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 6px 14px; border-radius: 3px; cursor: pointer; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; transition: background .15s, color .15s; font-family: var(--sans); }
-    .danger-btn:hover { background: var(--danger); color: #fff; }
-    .cfg-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
-    .stat-box { background: var(--bg); border: 1px solid var(--rule); border-radius: 4px; padding: 12px 16px; text-align: center; }
-    .stat-box .stat-val { font-size: 1.8rem; font-weight: 700; color: var(--navy); letter-spacing: -0.02em; }
-    .stat-box .stat-lbl { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin-top: 2px; }
-
-    /* OVERLAY NETWORK */
-    #overlay { position: fixed; inset: 0; background: rgba(26,26,26,.45); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; z-index: 200; touch-action: none; }
-    #modal { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 32px; width: min(88vw, 380px); box-shadow: 0 8px 40px rgba(0,0,0,.1); }
-    #modal h2 { font-size: 1.4rem; font-weight: 600; color: var(--navy); margin-bottom: 8px; }
-    #modal p { font-size: .8rem; color: var(--ink-2); line-height: 1.6; margin-bottom: 20px; }
-    .m-label { font-size: .65rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 5px; }
-    .m-input { width: 100%; background: var(--bg); border: 1px solid var(--rule); color: var(--ink); font-family: var(--sans); padding: 9px 12px; border-radius: 3px; font-size: .9rem; margin-bottom: 14px; font-weight: 500; }
-    .m-btn { width: 100%; padding: 11px; border: none; font-family: var(--sans); font-size: .75rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; border-radius: 3px; margin-bottom: 8px; transition: opacity .15s; }
-    .m-btn:hover { opacity: .85; }
-    .m-btn.primary { background: var(--navy); color: #fff; }
-    .m-btn.ghost   { background: transparent; border: 1px solid var(--rule); color: var(--ink-2); }
-
-    ::-webkit-scrollbar { width: 3px; height: 3px; }
-    ::-webkit-scrollbar-thumb { background: var(--rule); }
-  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
 <div id="app">
   <header>
-    <div class="wordmark">Evolution Tamborilero <em>/ v4.0</em></div>
+    <div class="wordmark">Evolution Tamborilero <span class="version">/ v4.0</span></div>
     <div class="header-right">
-      <button id="night-btn">Noche</button>
-      <button id="motor-btn">Motor</button>
+      <button id="night-btn">Modo Noche</button>
+      <button id="motor-btn">Modo Motor</button>
       <span id="fb-signal">Nube: Conectando...</span>
-      <div id="signal">
-        <div id="signal-pip"></div>
-        <span id="signal-label">sin señal</span>
-      </div>
+      <div id="signal"><div id="signal-pip"></div><span id="signal-label">sin señal</span></div>
       <button id="conn-btn">Configurar Red</button>
     </div>
   </header>
@@ -299,22 +44,10 @@
         </div>
       </div>
       <div class="row-targets">
-        <div class="instr-cell">
-          <span class="cell-label" style="color:var(--navy)">Beat VMG</span>
-          <div class="value-lg" id="v-beat-vmg" style="color:var(--navy)">—</div>
-        </div>
-        <div class="instr-cell">
-          <span class="cell-label" style="color:var(--navy)">Beat Angle</span>
-          <div class="value-lg" id="v-beat-angle" style="color:var(--navy)">—</div>
-        </div>
-        <div class="instr-cell">
-          <span class="cell-label" style="color:var(--bronze)">Run VMG</span>
-          <div class="value-lg" id="v-run-vmg" style="color:var(--bronze)">—</div>
-        </div>
-        <div class="instr-cell">
-          <span class="cell-label" style="color:var(--bronze)">Gybe Angle</span>
-          <div class="value-lg" id="v-gybe-angle" style="color:var(--bronze)">—</div>
-        </div>
+        <div class="instr-cell"><span class="cell-label" style="color:var(--navy)">Beat VMG</span><div class="value-lg" id="v-beat-vmg" style="color:var(--navy)">—</div></div>
+        <div class="instr-cell"><span class="cell-label" style="color:var(--navy)">Beat Angle</span><div class="value-lg" id="v-beat-angle" style="color:var(--navy)">—</div></div>
+        <div class="instr-cell"><span class="cell-label" style="color:var(--bronze)">Run VMG</span><div class="value-lg" id="v-run-vmg" style="color:var(--bronze)">—</div></div>
+        <div class="instr-cell"><span class="cell-label" style="color:var(--bronze)">Gybe Angle</span><div class="value-lg" id="v-gybe-angle" style="color:var(--bronze)">—</div></div>
       </div>
       <div class="row-mid">
         <div class="instr-cell"><span class="cell-label">Velocidad Barco (BSP)</span><div class="value-lg" id="v-bsp">—<span class="unit">kn</span></div></div>
@@ -346,14 +79,8 @@
         </div>
         <div class="strat-metrics">
           <span class="cell-label" style="margin-bottom: 10px; display:block;">Análisis de Salida</span>
-          <div class="strat-metric-row">
-            <span class="strat-metric-lbl">Dist. a la Línea:</span>
-            <span class="strat-metric-val" id="s-dist-line">—</span>
-          </div>
-          <div class="strat-metric-row">
-            <span class="strat-metric-lbl">Tiempo a la Línea (TTL):</span>
-            <span class="strat-metric-val" id="s-ttl">—</span>
-          </div>
+          <div class="strat-metric-row"><span class="strat-metric-lbl">Dist. a la Línea:</span><span class="strat-metric-val" id="s-dist-line">—</span></div>
+          <div class="strat-metric-row"><span class="strat-metric-lbl">Tiempo a la Línea (TTL):</span><span class="strat-metric-val" id="s-ttl">—</span></div>
           <div class="strat-metric-row" style="flex-direction: column; align-items: flex-start; gap: 4px; border-bottom:none; margin-top:10px;">
             <span class="strat-metric-lbl">Acción Requerida:</span>
             <span class="strat-metric-val" id="s-action">—</span>
@@ -361,20 +88,16 @@
         </div>
         <div class="mark-buttons">
           <span class="cell-label">Configuración del Campo</span>
-          <button class="strat-btn" id="btn-mark-comite">Marcar Comité (Estribor)</button>
-          <button class="strat-btn" id="btn-mark-pin">Marcar Pin (Babor)</button>
+          <button class="strat-btn" id="btn-mark-comite">Marcar Comité</button>
+          <button class="strat-btn" id="btn-mark-pin">Marcar Pin</button>
           <button class="strat-btn" id="btn-mark-barlo">Marcar Barlovento</button>
         </div>
       </div>
-      <div class="strat-map-container" id="map-container">
-        <canvas id="strat-canvas"></canvas>
-      </div>
+      <div class="strat-map-container"><canvas id="strat-canvas"></canvas></div>
     </div>
 
     <div class="panel" id="panel-polar">
-      <div class="polar-head">
-        <div><span class="polar-title">Tabla Polar Dinámica en Firebase</span><span class="polar-subtitle">Valores en Nudos</span></div>
-      </div>
+      <div class="polar-head"><div><span class="polar-title">Tabla Polar Dinámica</span><span class="polar-subtitle">Valores en Nudos</span></div></div>
       <div class="polar-wrap"><table class="ptable" id="ptable"></table></div>
     </div>
 
@@ -389,36 +112,30 @@
       <div class="cfg-section">
         <div class="cfg-title">Configuración de Entrada</div>
         <div class="cfg-row">
-          <label>Fuente Activa para la sesión:<small>BSP prioriza el agua; SOG calcula sobre fondo (GPS).</small></label>
+          <label>Fuente Activa:<small>BSP prioriza el agua; SOG calcula sobre fondo.</small></label>
           <select id="cfg-source" style="border:1px solid var(--navy); font-weight:500;">
-            <option value="BSP">BSP (BoatSpeed / Corredera)</option>
+            <option value="BSP">BSP (Corredera)</option>
             <option value="SOG" selected>SOG (GPS)</option>
           </select>
         </div>
-        <div class="cfg-row">
-          <label>Velocidad mínima de registro (kn)</label>
-          <input type="number" id="cfg-minspeed" min="0.5" max="5.0" step="0.5" value="2.0">
-        </div>
-        <div class="cfg-row">
-          <label>Umbral de Rendimiento óptimo</label>
-          <div style="display:flex; align-items:center; gap:8px;"><input type="range" id="cfg-thresh" min="50" max="99" value="85"><span class="cfg-val" id="thresh-v">85%</span></div>
-        </div>
+        <div class="cfg-row"><label>Velocidad mínima (kn)</label><input type="number" id="cfg-minspeed" min="0.5" max="5.0" step="0.5" value="2.0"></div>
+        <div class="cfg-row"><label>Umbral Rendimiento</label><div style="display:flex; align-items:center; gap:8px;"><input type="range" id="cfg-thresh" min="50" max="99" value="85"><span class="cfg-val" id="thresh-v">85%</span></div></div>
       </div>
       <div class="cfg-section">
-        <div class="cfg-title">Estadísticas del Sistema</div>
+        <div class="cfg-title">Estadísticas</div>
         <div class="cfg-stats">
-          <div class="stat-box"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Celdas Corp.</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-bsp">0</div><div class="stat-lbl">Registros BSP</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-sog">0</div><div class="stat-lbl">Registros SOG</div></div>
-          <div class="stat-box"><div class="stat-val" id="stat-hist">0</div><div class="stat-lbl">Entradas Hist.</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-total">0</div><div class="stat-lbl">Celdas</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-bsp">0</div><div class="stat-lbl">Regs BSP</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-sog">0</div><div class="stat-lbl">Regs SOG</div></div>
+          <div class="stat-box"><div class="stat-val" id="stat-hist">0</div><div class="stat-lbl">Historial</div></div>
           <div class="stat-box"><div class="stat-val" id="stat-cover">0%</div><div class="stat-lbl">Cobertura</div></div>
         </div>
       </div>
       <div class="cfg-section">
-        <div class="cfg-title" style="color:var(--danger)">Mantenimiento de Base de Datos</div>
+        <div class="cfg-title" style="color:var(--danger)">Mantenimiento</div>
         <div class="cfg-row"><label>Limpiar Celda Actual</label><button class="danger-btn" id="clear-cell-btn">Borrar Celda</button></div>
-        <div class="cfg-row"><label>Purgar registros SOG</label><button class="danger-btn" id="purge-sog-btn">Purgar SOG</button></div>
-        <div class="cfg-row"><label>Reiniciar Tabla Polar</label><button class="danger-btn" id="clear-polar-btn">Borrar Todo</button></div>
+        <div class="cfg-row"><label>Purgar SOG</label><button class="danger-btn" id="purge-sog-btn">Purgar SOG</button></div>
+        <div class="cfg-row"><label>Reiniciar Tabla</label><button class="danger-btn" id="clear-polar-btn">Borrar Todo</button></div>
       </div>
     </div>
   </div>
@@ -427,15 +144,14 @@
 <div id="overlay" style="display:none;">
   <div id="modal">
     <h2>Conexión Local de Abordo</h2>
-    <p>Introduce la dirección IP y el puerto de tu servidor de datos NMEA 0183.</p>
-    <label class="m-label">Dirección IP del Servidor</label><input class="m-input" id="m-host" type="text" value="192.168.0.1">
-    <label class="m-label">Puerto WebSocket</label><input class="m-input" id="m-port" type="text" value="10110">
-    <button class="m-btn primary" id="m-conn">Conectar Sistema</button>
+    <p>Introduce la IP y el puerto de tu servidor NMEA 0183.</p>
+    <label class="m-label">IP del Servidor</label><input class="m-input" id="m-host" type="text" value="192.168.0.1">
+    <label class="m-label">Puerto WS</label><input class="m-input" id="m-port" type="text" value="10110">
+    <button class="m-btn primary" id="m-conn">Conectar</button>
     <button class="m-btn ghost" id="m-cancel">Cancelar</button>
   </div>
 </div>
 
-<script type="module" src="./js/app.js"></script>
-
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
